@@ -14,15 +14,6 @@ export default class RedshiftExtractor {
     ssl?: boolean;
     sslrootcert?: string;
   }) {
-    console.log('RedshiftExtractor constructor called with config:', {
-      host: config.host,
-      port: config.port,
-      database: config.database,
-      user: config.user,
-      ssl: config.ssl,
-      // Don't log password for security
-    });
-
     // Build PostgreSQL client config with SSL support
     const clientConfig: any = {
       user: config.user,
@@ -39,27 +30,20 @@ export default class RedshiftExtractor {
         rejectUnauthorized: false, // Use permissive SSL by default
         ...(config.sslrootcert && { ca: require('fs').readFileSync(config.sslrootcert) }),
       };
-      console.log('SSL configuration enabled for Redshift connection');
     }
 
     this.client = new Client(clientConfig);
   }
 
   async connect() {
-    console.log('RedshiftExtractor connecting...');
     await this.client.connect();
-    console.log('RedshiftExtractor connected successfully');
   }
 
   async disconnect() {
-    console.log('RedshiftExtractor disconnecting...');
     await this.client.end();
-    console.log('RedshiftExtractor disconnected');
   }
 
   private async getSchemas(): Promise<string[]> {
-    console.log('RedshiftExtractor getting schemas...');
-
     // Try multiple approaches to get schemas since Redshift might have different permissions
     const queries = [
       // Standard information_schema query
@@ -79,50 +63,42 @@ export default class RedshiftExtractor {
 
     for (const query of queries) {
       try {
-        console.log(`Trying schema query: ${query}`);
         const res = await this.client.query(query);
-        console.log(`Query result:`, res.rows);
 
         if (res.rows && res.rows.length > 0) {
           const schemas = res.rows.map((row) => row.schema_name).filter(Boolean);
           if (schemas.length > 0) {
-            console.log('RedshiftExtractor found schemas:', schemas);
             return schemas;
           }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log(`Schema query failed, trying next: ${errorMessage}`);
+        console.error(`Schema query failed: ${errorMessage}`);
         continue;
       }
     }
 
     // If all queries fail, default to 'public' schema
-    console.log('All schema queries failed, defaulting to public schema');
     return ['public'];
   }
 
   private async getTables(schema: string): Promise<string[]> {
-    console.log(`RedshiftExtractor getting tables for schema: ${schema}`);
     const res = await this.client.query(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = $1 AND table_type = 'BASE TABLE';`,
       [schema],
     );
     const tables = res.rows.map((row) => row.table_name);
-    console.log(`RedshiftExtractor found ${tables.length} tables in schema ${schema}:`, tables);
     return tables;
   }
 
   private async getViews(schema: string): Promise<string[]> {
-    console.log(`RedshiftExtractor getting views for schema: ${schema}`);
     const res = await this.client.query(
       `SELECT table_name FROM information_schema.views
        WHERE table_schema = $1;`,
       [schema],
     );
     const views = res.rows.map((row) => row.table_name);
-    console.log(`RedshiftExtractor found ${views.length} views in schema ${schema}:`, views);
     return views;
   }
 
@@ -179,15 +155,12 @@ export default class RedshiftExtractor {
   }
 
   async extractSchema(): Promise<{ tables: Table[] }> {
-    console.log('RedshiftExtractor starting schema extraction...');
     const schemas = await this.getSchemas();
     const allTables: Table[] = [];
 
     for (const schema of schemas) {
-      console.log(`Processing schema: ${schema}`);
       const tables = await this.getTables(schema);
       for (const table of tables) {
-        console.log(`Processing table: ${schema}.${table}`);
         const columns = await this.getDetailedColumns(schema, table);
         allTables.push({
           name: table,
@@ -199,7 +172,6 @@ export default class RedshiftExtractor {
 
       const views = await this.getViews(schema);
       for (const view of views) {
-        console.log(`Processing view: ${schema}.${view}`);
         const columns = await this.getDetailedColumns(schema, view);
         allTables.push({
           name: view,
@@ -210,7 +182,6 @@ export default class RedshiftExtractor {
       }
     }
 
-    console.log(`RedshiftExtractor schema extraction completed. Total objects: ${allTables.length}`);
     return { tables: allTables };
   }
 }
