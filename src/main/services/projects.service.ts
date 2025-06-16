@@ -11,6 +11,7 @@ import {
   Table,
   BigQueryDBTConnection,
   DuckDBDBTConnection,
+  RedshiftDBTConnection,
 } from '../../types/backend';
 import {
   createNewFile,
@@ -31,6 +32,7 @@ import {
   DatabricksExtractor,
   BigQueryExtractor,
   DuckDBExtractor,
+  RedshiftExtractor,
 } from '../extractor';
 
 export default class ProjectsService {
@@ -441,13 +443,25 @@ export default class ProjectsService {
     return schema.tables;
   }
 
+  static async extractRedshiftSchema(connection: RedshiftDBTConnection) {
+    const extractor = new RedshiftExtractor({
+      user: connection.username,
+      host: connection.host,
+      database: connection.database,
+      password: connection.password,
+      port: connection.port,
+      ssl: connection.ssl ?? true, // Default to SSL enabled
+      sslrootcert: connection.sslrootcert,
+    });
+
+    await extractor.connect();
+    const schema = await extractor.extractSchema();
+    await extractor.disconnect();
+    return schema.tables;
+  }
+
   static async extractSchema(project: Project): Promise<Table[]> {
     const connection = project.dbtConnection;
-
-    // Add debug logging to help diagnose the issue
-    console.log('🔍 Extracting schema for project:', project.name);
-    console.log('🔍 Connection object:', connection);
-    console.log('🔍 Connection type:', connection?.type);
 
     if (!connection) {
       throw new Error('No database connection configured for this project');
@@ -462,6 +476,8 @@ export default class ProjectsService {
     switch (connection.type) {
       case 'postgres':
         return this.extractPgSchema(connection as PostgresDBTConnection);
+      case 'redshift':
+        return this.extractRedshiftSchema(connection as RedshiftDBTConnection);
       case 'snowflake':
         return this.extractSnowflakeSchema(
           connection as SnowflakeDBTConnection,
@@ -473,10 +489,9 @@ export default class ProjectsService {
       case 'bigquery':
         return this.extractBigQuerySchema(connection as BigQueryDBTConnection);
       case 'duckdb':
-        console.log('🦆 Extracting DuckDB schema...');
         return this.extractDuckDBSchema(connection as DuckDBDBTConnection);
       default:
-        throw new Error(`Unsupported connection type: "${connection.type}"`);
+        throw new Error(`Unsupported connection type: "${(connection as any).type}"`);
     }
   }
 

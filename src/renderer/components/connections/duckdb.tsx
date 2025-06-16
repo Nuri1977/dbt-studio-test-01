@@ -19,6 +19,7 @@ import {
   useConfigureConnection,
   useTestConnection,
   useGetSelectedProject,
+  useFilePicker,
 } from '../../controllers';
 import ConnectionHeader from './connection-header';
 
@@ -30,6 +31,8 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
   const { data: project } = useGetSelectedProject();
   const navigate = useNavigate();
   const theme = useTheme();
+
+  const { mutate: getFiles } = useFilePicker();
 
   const existingConnection: DuckDBDBTConnection | undefined =
     React.useMemo(() => {
@@ -125,41 +128,34 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     setConnectionStatus('idle');
   };
 
-  const handleFileSelect = async () => {
-    try {
-      // Use Electron's dialog API through IPC
-      const result = await window.electron.ipcRenderer.invoke(
-        'settings:dialog',
-        {
-          properties: ['openFile'],
-          filters: [
-            { name: 'DuckDB Files', extensions: ['duckdb', 'db'] },
-            { name: 'All Files', extensions: ['*'] },
-          ],
+  const handleFileSelect = () => {
+    getFiles(
+      {
+        properties: ['openFile'],
+      },
+      {
+        onSuccess: (filePaths) => {
+          if (filePaths && filePaths.length > 0) {
+            const selectedPath = filePaths[0];
+            setFormState((prev) => ({
+              ...prev,
+              database_path: selectedPath,
+              database: selectedPath,
+            }));
+            setConnectionStatus('idle');
+          }
         },
-      );
-
-      if (Array.isArray(result) && result.length > 0) {
-        const selectedPath = result[0];
-        setFormState((prev) => ({
-          ...prev,
-          database_path: selectedPath,
-          database: selectedPath, // Set database to the file path for compatibility
-        }));
-        setConnectionStatus('idle');
-        toast.success('Database file selected successfully');
-      }
-    } catch (error: any) {
-      console.error('File dialog error:', error);
-      toast.error(error?.message || 'Failed to open file dialog');
-    }
+        onError: () => {
+          toast.error('Failed to select database file');
+        },
+      },
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!project?.id) return;
 
-    // Ensure database field matches database_path for DuckDB
     const connectionData = {
       ...formState,
       database: formState.database_path,
