@@ -444,16 +444,6 @@ export default class ProjectsService {
   }
 
   static async extractRedshiftSchema(connection: RedshiftDBTConnection) {
-    console.log('🚀 Creating Redshift extractor with config:', {
-      host: connection.host,
-      port: connection.port,
-      database: connection.database,
-      username: connection.username,
-      ssl: connection.ssl,
-      sslrootcert: connection.sslrootcert,
-      // Don't log password for security
-    });
-
     const extractor = new RedshiftExtractor({
       user: connection.username,
       host: connection.host,
@@ -464,26 +454,14 @@ export default class ProjectsService {
       sslrootcert: connection.sslrootcert,
     });
 
-    console.log('🚀 Connecting to Redshift...');
     await extractor.connect();
-
-    console.log('🚀 Extracting schema...');
     const schema = await extractor.extractSchema();
-
-    console.log('🚀 Disconnecting from Redshift...');
     await extractor.disconnect();
-
-    console.log('🚀 Redshift schema extraction completed, found', schema.tables.length, 'tables/views');
     return schema.tables;
   }
 
   static async extractSchema(project: Project): Promise<Table[]> {
     const connection = project.dbtConnection;
-
-    // Add debug logging to help diagnose the issue
-    console.log('🔍 Extracting schema for project:', project.name);
-    console.log('🔍 Connection object:', connection);
-    console.log('🔍 Connection type:', connection?.type);
 
     if (!connection) {
       throw new Error('No database connection configured for this project');
@@ -511,7 +489,6 @@ export default class ProjectsService {
       case 'bigquery':
         return this.extractBigQuerySchema(connection as BigQueryDBTConnection);
       case 'duckdb':
-        console.log('🦆 Extracting DuckDB schema...');
         return this.extractDuckDBSchema(connection as DuckDBDBTConnection);
       default:
         throw new Error(`Unsupported connection type: "${(connection as any).type}"`);
