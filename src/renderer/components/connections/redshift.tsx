@@ -8,15 +8,26 @@ import {
   TextField,
   CircularProgress,
   useTheme,
+  FormControlLabel,
+  Checkbox,
+  Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material'; // Removed Save import
+import { Visibility, VisibilityOff, FolderOpen, InfoOutlined } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { RedshiftConnection } from '../../../types/backend';
+import {
+  RedshiftConnection,
+  RedshiftDBTConnection,
+} from '../../../types/backend';
 import connectionIcons from '../../../../assets/connectionIcons';
 import {
   useConfigureConnection,
   useTestConnection,
   useGetSelectedProject,
+  useFilePicker,
 } from '../../controllers';
 import ConnectionHeader from './connection-header';
 
@@ -29,15 +40,27 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
   const navigate = useNavigate();
   const theme = useTheme();
 
+  const { mutate: getFiles } = useFilePicker();
+
+  const existingConnection: RedshiftDBTConnection | undefined =
+    React.useMemo(() => {
+      if (project) {
+        return project.dbtConnection as RedshiftDBTConnection;
+      }
+      return undefined;
+    }, [project]);
+
   const [formState, setFormState] = React.useState<RedshiftConnection>({
-    type: 'redshift',
+    type: existingConnection?.type ?? 'redshift',
     name: project?.name || 'Redshift Connection',
-    host: '',
-    port: 5439,
-    database: '',
-    schema: 'public',
-    username: '',
-    password: '',
+    host: existingConnection?.host ?? '',
+    port: existingConnection?.port ?? 5439,
+    database: existingConnection?.database ?? '',
+    schema: existingConnection?.schema ?? 'public',
+    username: existingConnection?.username ?? '',
+    password: existingConnection?.password ?? '',
+    ssl: existingConnection?.ssl ?? true,
+    sslrootcert: existingConnection?.sslrootcert ?? '',
   });
 
   const [showPassword, setShowPassword] = React.useState(false);
@@ -45,6 +68,7 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
   const [connectionStatus, setConnectionStatus] = React.useState<
     'idle' | 'success' | 'failed'
   >('idle');
+  const [infoModalOpen, setInfoModalOpen] = React.useState(false);
 
   const { mutate: configureConnection } = useConfigureConnection({
     onSuccess: () => {
@@ -63,6 +87,7 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
     },
     onSettled: () => setIsTesting(false),
     onSuccess: (success) => {
+      setIsTesting(false);
       if (success) {
         toast.success('Connection test successful!');
         setConnectionStatus('success');
@@ -72,20 +97,45 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
       setConnectionStatus('failed');
     },
     onError: (error) => {
+      setIsTesting(false);
       toast.error(`Test failed: ${error.message}`);
       setConnectionStatus('failed');
     },
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormState((prev) => ({
       ...prev,
-      [name]: name === 'port' ? Number(value) : value,
+      [name]: type === 'checkbox' ? checked : name === 'port' ? Number(value) : value,
     }));
 
-    // Reset connection status whenever an input changes
     setConnectionStatus('idle');
+  };
+
+  const handleCertificateSelect = async () => {
+    try {
+      getFiles(
+        {
+          properties: ['openFile'],
+        },
+        {
+          onSuccess: (filePaths) => {
+            if (filePaths && filePaths.length > 0) {
+              setFormState(prev => ({
+                ...prev,
+                sslrootcert: filePaths[0]
+              }));
+            }
+          },
+          onError: () => {
+            toast.error('Failed to select certificate file');
+          }
+        }
+      );
+    } catch (error) {
+      toast.error('Failed to select certificate file');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -98,10 +148,10 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
   };
 
   const handleTest = () => {
+    setIsTesting(true);
     testConnection(formState);
   };
 
-  // Helper function to get indicator color based on connection status
   const getIndicatorColor = () => {
     switch (connectionStatus) {
       case 'success':
@@ -109,11 +159,10 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
       case 'failed':
         return theme.palette.error.main;
       default:
-        return '#9e9e9e'; // silver/grey for idle state
+        return '#9e9e9e';
     }
   };
 
-  // Add this function to replace nested ternary
   const getButtonStartIcon = () => {
     if (isTesting) {
       return <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />;
@@ -167,6 +216,7 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
           onChange={handleChange}
           fullWidth
           required
+          placeholder="your-cluster.region.redshift.amazonaws.com"
         />
 
         <TextField
@@ -203,6 +253,7 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
           value={formState.username}
           onChange={handleChange}
           fullWidth
+          required
         />
 
         <TextField
@@ -212,6 +263,7 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
           value={formState.password}
           onChange={handleChange}
           fullWidth
+          required
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -226,6 +278,54 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
             ),
           }}
         />
+
+        {/* SSL Configuration Section */}
+        <Box sx={{ mt: 2, mb: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formState.ssl || false}
+                onChange={handleChange}
+                name="ssl"
+              />
+            }
+            label="Use SSL Mode (Recommended)"
+          />
+        </Box>
+
+        {formState.ssl && (
+          <TextField
+            label="SSL Root Certificate Path (Optional)"
+            name="sslrootcert"
+            value={formState.sslrootcert || ''}
+            onChange={handleChange}
+            fullWidth
+            placeholder="/path/to/redshift-ca-bundle.crt"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={handleCertificateSelect}
+                    edge="end"
+                    title="Browse for certificate file"
+                    sx={{ mr: 1 }}
+                  >
+                    <FolderOpen />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => setInfoModalOpen(true)}
+                    edge="end"
+                    title="SSL certificate information"
+                    sx={{ color: theme.palette.info.main }}
+                  >
+                    <InfoOutlined fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            helperText="Leave empty to use default SSL settings, or provide path to custom certificate"
+          />
+        )}
 
         <Box
           sx={{
@@ -246,11 +346,10 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
               paddingRight: '32px',
               minWidth: '150px',
             }}
-            startIcon={getButtonStartIcon()} // Replace the ternary with function call
+            startIcon={getButtonStartIcon()}
           >
             {isTesting ? 'Testing...' : 'Test Connection'}
 
-            {/* Connection status indicator inside button */}
             <Box
               sx={{
                 position: 'absolute',
@@ -270,6 +369,81 @@ export const Redshift: React.FC<Props> = ({ onCancel }) => {
           </Button>
         </Box>
       </Box>
+
+      {/* SSL Certificate Information Modal */}
+      <Dialog
+        open={infoModalOpen}
+        onClose={() => setInfoModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            maxWidth: '600px',
+          },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            How to get Redshift SSL Certificate
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ py: 1 }}>
+            <Typography variant="body1" sx={{ mb: 2, fontWeight: 'bold' }}>
+              1. Download from AWS Documentation:
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, ml: 2 }}>
+              Visit the official AWS Redshift SSL documentation:
+              <br />
+              <strong>https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html</strong>
+            </Typography>
+
+            <Typography variant="body1" sx={{ mb: 2, fontWeight: 'bold' }}>
+              2. Direct Download Link:
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, ml: 2 }}>
+              You can directly download the certificate bundle:
+              <br />
+              <strong>https://s3.amazonaws.com/redshift-downloads/redshift-ca-bundle.crt</strong>
+            </Typography>
+
+            <Typography variant="body1" sx={{ mb: 2, fontWeight: 'bold' }}>
+              3. Regional Certificates:
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
+              • <strong>US East (N. Virginia):</strong> redshift-ca-bundle.crt
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
+              • <strong>Other AWS regions:</strong> Check the AWS documentation for region-specific certificates
+            </Typography>
+
+            <Typography variant="body1" sx={{ mb: 2, fontWeight: 'bold' }}>
+              4. Installation Steps:
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
+              • Download the certificate file to your local machine
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
+              • Save it in a secure location (e.g., ~/.ssl/redshift-ca-bundle.crt)
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1, ml: 2 }}>
+              • Use the "Browse" button to select the downloaded certificate file
+            </Typography>
+
+            <Box sx={{ mt: 3, p: 2, bgcolor: 'info.main', color: 'info.contrastText', borderRadius: 1 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> SSL certificates are required for secure connections to Redshift clusters.
+                The certificate ensures that your connection is encrypted and authenticated.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInfoModalOpen(false)} variant="contained">
+            Got it
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

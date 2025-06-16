@@ -11,9 +11,11 @@ import {
   BigQueryConnection,
   BigQueryTestResponse,
   DuckDBConnection,
+  RedshiftConnection,
 } from '../../types/backend';
 import { SNOWFLAKE_TYPE_MAP } from './constants';
 import { DBSQLClient } from '@databricks/sql';
+import fs from 'fs';
 
 export async function testPostgresConnection(
   config: PostgresConnection,
@@ -33,6 +35,38 @@ export async function testPostgresConnection(
   return result.rows[0]?.connection_test === 1;
 }
 
+export async function testRedshiftConnection(
+  config: RedshiftConnection,
+): Promise<boolean> {
+  const clientConfig: any = {
+    host: config.host,
+    port: config.port,
+    user: config.username,
+    password: config.password,
+    database: config.database,
+    connectionTimeoutMillis: 15000, // Increased timeout for Redshift
+  };
+
+  // Enable SSL by default for Redshift (required for Redshift Serverless)
+  if (config.ssl !== false) {
+    clientConfig.ssl = {
+      rejectUnauthorized: false, // Use permissive SSL by default
+      ...(config.sslrootcert && { ca: fs.readFileSync(config.sslrootcert) }),
+    };
+  }
+
+  const client = new pg.Client(clientConfig);
+
+  try {
+    await client.connect();
+    const result = await client.query('SELECT 1 as connection_test');
+    await client.end();
+    return result.rows[0]?.connection_test === 1;
+  } catch (error) {
+    return false;
+  }
+}
+
 export const executePostgresQuery = async (
   config: PostgresConnection,
   query: string,
@@ -45,6 +79,44 @@ export const executePostgresQuery = async (
     database: config.database,
     connectionTimeoutMillis: 5000,
   });
+
+  try {
+    await client.connect();
+    const result = await client.query(query);
+    return {
+      success: true,
+      data: result.rows,
+      fields: result.fields.map((f) => ({ name: f.name, type: f.dataTypeID })),
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  } finally {
+    await client.end();
+  }
+};
+
+export const executeRedshiftQuery = async (
+  config: RedshiftConnection,
+  query: string,
+): Promise<QueryResponseType> => {
+  const clientConfig: any = {
+    host: config.host,
+    port: config.port,
+    user: config.username,
+    password: config.password,
+    database: config.database,
+    connectionTimeoutMillis: 15000, // Increased timeout for Redshift
+  };
+
+  // Enable SSL by default for Redshift (required for Redshift Serverless)
+  if (config.ssl !== false) {
+    clientConfig.ssl = {
+      rejectUnauthorized: false, // Use permissive SSL by default
+      ...(config.sslrootcert && { ca: fs.readFileSync(config.sslrootcert) }),
+    };
+  }
+
+  const client = new pg.Client(clientConfig);
 
   try {
     await client.connect();

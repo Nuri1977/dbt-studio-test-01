@@ -23,6 +23,8 @@ import {
   executeDatabricksQuery,
   testDuckDBConnection,
   executeDuckDBQuery,
+  testRedshiftConnection,
+  executeRedshiftQuery,
 } from '../utils/connectors';
 
 export default class ConnectorsService {
@@ -128,8 +130,10 @@ export default class ConnectorsService {
         return testDatabricksConnection(connection);
       case 'duckdb':
         return testDuckDBConnection(connection);
+      case 'redshift':
+        return testRedshiftConnection(connection);
       default:
-        throw new Error(`Unsupported connection type: ${connection.type}`);
+        throw new Error(`Unsupported connection type: ${(connection as any).type}`);
     }
   }
 
@@ -154,8 +158,11 @@ export default class ConnectorsService {
         return executeDatabricksQuery(connection, query);
       case 'duckdb':
         return executeDuckDBQuery(connection, query);
+      case 'redshift':
+        return executeRedshiftQuery(connection, query);
       default:
-        throw new Error(`Unsupported connection type: ${connection.type}`);
+        // Use the literal type instead of accessing the property to avoid TypeScript error
+        throw new Error(`Unsupported connection type: ${(connection as any).type}`);
     }
   }
 
@@ -253,7 +260,17 @@ export default class ConnectorsService {
       case 'snowflake':
         return `jdbc:snowflake://${conn.account}.snowflakecomputing.com/?user=${conn.username}&password=${conn.password}&warehouse=${conn.warehouse}&db=${conn.database}&schema=${conn.schema}`;
       case 'redshift':
-        return `jdbc:redshift://${conn.host}:${conn.port}/${conn.database}?user=${conn.username}&password=${conn.password}`;
+        let redshiftUrl = `jdbc:redshift://${conn.host}:${conn.port}/${conn.database}?user=${conn.username}&password=${conn.password}`;
+
+        // Add SSL parameters if enabled
+        if (conn.ssl) {
+          redshiftUrl += '&ssl=true';
+          if (conn.sslrootcert) {
+            redshiftUrl += `&sslrootcert=${conn.sslrootcert}`;
+          }
+        }
+
+        return redshiftUrl;
       case 'bigquery':
         const host = 'https://www.googleapis.com';
         const path = 'bigquery/v2';
@@ -331,6 +348,8 @@ export default class ConnectorsService {
           schema: conn.schema,
           host: conn.host,
           port: conn.port,
+          ssl: conn.ssl,
+          sslrootcert: conn.sslrootcert,
         };
       case 'databricks':
         // Special case for Databricks with token auth
@@ -414,7 +433,7 @@ export default class ConnectorsService {
           threads: 4,
         };
       case 'redshift':
-        return {
+        const redshiftProfile: any = {
           type: 'redshift',
           host: conn.host,
           port: conn.port,
@@ -424,6 +443,16 @@ export default class ConnectorsService {
           schema: conn.schema,
           threads: 4,
         };
+
+        // Add SSL configuration if enabled
+        if (conn.ssl) {
+          redshiftProfile.sslmode = 'require';
+          if (conn.sslrootcert) {
+            redshiftProfile.sslrootcert = conn.sslrootcert;
+          }
+        }
+
+        return redshiftProfile;
       case 'bigquery':
         const profile: any = {
           type: 'bigquery',

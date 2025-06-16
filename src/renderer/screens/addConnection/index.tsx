@@ -59,7 +59,7 @@ const baseItems: ItemType[] = [
     id: 'redshift',
     name: 'Redshift',
     img: 'redshift',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'databricks',

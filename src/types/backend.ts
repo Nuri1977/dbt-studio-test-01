@@ -60,6 +60,8 @@ export type RedshiftConnection = ConnectionBase & {
   host: string;
   port: number;
   keepalives_idle?: number;
+  ssl?: boolean;
+  sslrootcert?: string;
 };
 
 export type DatabricksConnection = Omit<
@@ -126,6 +128,8 @@ export type RedshiftDBTConnection = DBTConnectionBase & {
   host: string;
   port: number;
   keepalives_idle?: number;
+  ssl?: boolean;
+  sslrootcert?: string;
 };
 
 export type DatabricksDBTConnection = Omit<

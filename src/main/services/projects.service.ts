@@ -11,6 +11,7 @@ import {
   Table,
   BigQueryDBTConnection,
   DuckDBDBTConnection,
+  RedshiftDBTConnection,
 } from '../../types/backend';
 import {
   createNewFile,
@@ -31,6 +32,7 @@ import {
   DatabricksExtractor,
   BigQueryExtractor,
   DuckDBExtractor,
+  RedshiftExtractor,
 } from '../extractor';
 
 export default class ProjectsService {
@@ -441,6 +443,40 @@ export default class ProjectsService {
     return schema.tables;
   }
 
+  static async extractRedshiftSchema(connection: RedshiftDBTConnection) {
+    console.log('🚀 Creating Redshift extractor with config:', {
+      host: connection.host,
+      port: connection.port,
+      database: connection.database,
+      username: connection.username,
+      ssl: connection.ssl,
+      sslrootcert: connection.sslrootcert,
+      // Don't log password for security
+    });
+
+    const extractor = new RedshiftExtractor({
+      user: connection.username,
+      host: connection.host,
+      database: connection.database,
+      password: connection.password,
+      port: connection.port,
+      ssl: connection.ssl ?? true, // Default to SSL enabled
+      sslrootcert: connection.sslrootcert,
+    });
+
+    console.log('🚀 Connecting to Redshift...');
+    await extractor.connect();
+
+    console.log('🚀 Extracting schema...');
+    const schema = await extractor.extractSchema();
+
+    console.log('🚀 Disconnecting from Redshift...');
+    await extractor.disconnect();
+
+    console.log('🚀 Redshift schema extraction completed, found', schema.tables.length, 'tables/views');
+    return schema.tables;
+  }
+
   static async extractSchema(project: Project): Promise<Table[]> {
     const connection = project.dbtConnection;
 
@@ -462,6 +498,8 @@ export default class ProjectsService {
     switch (connection.type) {
       case 'postgres':
         return this.extractPgSchema(connection as PostgresDBTConnection);
+      case 'redshift':
+        return this.extractRedshiftSchema(connection as RedshiftDBTConnection);
       case 'snowflake':
         return this.extractSnowflakeSchema(
           connection as SnowflakeDBTConnection,
@@ -476,7 +514,7 @@ export default class ProjectsService {
         console.log('🦆 Extracting DuckDB schema...');
         return this.extractDuckDBSchema(connection as DuckDBDBTConnection);
       default:
-        throw new Error(`Unsupported connection type: "${connection.type}"`);
+        throw new Error(`Unsupported connection type: "${(connection as any).type}"`);
     }
   }
 
