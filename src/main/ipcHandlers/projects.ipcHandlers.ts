@@ -28,8 +28,13 @@ const registerProjectHandlers = () => {
 
   ipcMain.handle(
     'project:addFromVCS',
-    async (_event, body: { path: string; name: string }) => {
-      return ProjectsService.addProjectFromVCS(body.path, body.name);
+    async (_event, body: {
+      path: string;
+      name: string;
+      dbtConnection?: any;
+      rosettaConnection?: any;
+    }) => {
+      return ProjectsService.addProjectFromVCS(body);
     },
   );
 

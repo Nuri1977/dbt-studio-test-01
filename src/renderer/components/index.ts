@@ -21,4 +21,5 @@ export * from './errorMessage';
 export * from './settings';
 export * from './dbtSetup';
 export * from './finishSetup';
+export * from './GetStartedModal';
 export { ScrollbarStyles } from './scrollbarStyles';

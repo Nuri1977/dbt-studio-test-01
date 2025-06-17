@@ -5,6 +5,7 @@ import fs from 'fs';
 import { AuthError } from '../errors';
 import { FileStatus, GitCredentials } from '../../types/backend';
 import SettingsService from './settings.service';
+import ConnectorsService from './connectors.service';
 
 function getRepoNameFromUrl(url: string): string {
   const parts = url.split('/');
@@ -337,7 +338,16 @@ export default class GitService {
       }
 
       await git.clone(urlToUse, destinationPath);
-      return { path: destinationPath, name: repoName };
+
+      // Parse connection files if they exist
+      const connections = await ConnectorsService.parseProjectConnectionFiles(destinationPath);
+
+      return {
+        path: destinationPath,
+        name: repoName,
+        dbtConnection: connections.dbtConnection,
+        rosettaConnection: connections.rosettaConnection
+      };
     } catch (err: any) {
       if (isAuthError(err)) throw new AuthError();
       throw new Error(`Clone failed: ${err.message}`);
