@@ -40,7 +40,13 @@ const registerGitHandlers = () => {
       { url, credentials }: { url: string; credentials?: GitCredentials },
     ) => {
       try {
-        return await gitService.cloneRepo(url, credentials);
+        const result = await gitService.cloneRepo(url, credentials);
+        return {
+          name: result.name,
+          path: result.path,
+          dbtConnection: result.dbtConnection,
+          rosettaConnection: result.rosettaConnection,
+        };
       } catch (err: any) {
         if (err instanceof AuthError) return { authRequired: true };
         return { error: err?.message };

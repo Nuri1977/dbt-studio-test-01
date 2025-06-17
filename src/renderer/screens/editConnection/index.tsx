@@ -9,7 +9,7 @@ import { Container } from './styles';
 
 const EditConnection: React.FC = () => {
   const navigate = useNavigate();
-  const { data: project } = useGetSelectedProject();
+  const { data: project, isLoading } = useGetSelectedProject();
 
   const handleCancel = () => {
     navigate('/app/project-details');
@@ -41,12 +41,22 @@ const EditConnection: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <Container>
+          <Typography variant="h6">Loading...</Typography>
+        </Container>
+      </AppLayout>
+    );
+  }
+
   // Handle case where project or dbtConnection is undefined
   if (!project || !project.dbtConnection) {
     return (
       <AppLayout>
         <Container>
-          <Typography variant="h6" color="error">
+          <Typography variant="h6">
             No connection configuration found. Please set up a connection first.
           </Typography>
         </Container>

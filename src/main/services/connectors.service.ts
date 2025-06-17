@@ -561,4 +561,175 @@ export default class ConnectorsService {
 
     return filePath;
   }
+
+  /**
+   * Parse profiles.yml and main.conf files from a project and extract connection information
+   */
+  static async parseProjectConnectionFiles(projectPath: string): Promise<{
+    dbtConnection?: DBTConnection;
+    rosettaConnection?: RosettaConnection;
+  }> {
+    const result: {
+      dbtConnection?: DBTConnection;
+      rosettaConnection?: RosettaConnection;
+    } = {};
+
+    try {
+      // Parse profiles.yml
+      const profilesPath = path.join(projectPath, 'profiles.yml');
+      if (fs.existsSync(profilesPath)) {
+        const dbtConnection = await this.parseProfilesYml(profilesPath);
+        if (dbtConnection) {
+          result.dbtConnection = dbtConnection;
+        }
+      }
+
+      // Parse main.conf (Rosetta configuration)
+      const mainConfPath = path.join(projectPath, 'rosetta', 'main.conf');
+      if (fs.existsSync(mainConfPath)) {
+        const rosettaConnection = await this.parseMainConf(mainConfPath);
+        if (rosettaConnection) {
+          result.rosettaConnection = rosettaConnection;
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing project connection files:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Parse profiles.yml file and extract DBT connection information
+   */
+  private static async parseProfilesYml(profilesPath: string): Promise<DBTConnection | null> {
+    try {
+      const profilesContent = await fs.promises.readFile(profilesPath, 'utf8');
+      const profilesData = yaml.load(profilesContent) as any;
+
+      // Find the first profile (excluding 'config')
+      const profileNames = Object.keys(profilesData).filter(key => key !== 'config');
+      if (profileNames.length === 0) return null;
+
+      const profile = profilesData[profileNames[0]];
+      const devOutput = profile?.outputs?.dev;
+
+      if (!devOutput || !devOutput.type) return null;
+
+      // Map different DBT connection types
+      switch (devOutput.type) {
+        case 'postgres':
+          return {
+            type: 'postgres',
+            host: devOutput.host,
+            port: devOutput.port || 5432,
+            username: devOutput.user,
+            password: devOutput.password,
+            database: devOutput.dbname,
+            schema: devOutput.schema,
+          };
+
+        case 'snowflake':
+          return {
+            type: 'snowflake',
+            account: devOutput.account,
+            username: devOutput.user,
+            password: devOutput.password,
+            database: devOutput.database,
+            schema: devOutput.schema,
+            warehouse: devOutput.warehouse,
+            role: devOutput.role,
+          };
+
+        case 'bigquery':
+          return {
+            type: 'bigquery',
+            method: devOutput.method || 'service-account',
+            project: devOutput.project,
+            database: devOutput.project,
+            schema: devOutput.dataset,
+            keyfile: devOutput.keyfile,
+            location: devOutput.location,
+            priority: devOutput.priority,
+            username: '', // BigQuery doesn't use traditional username/password
+            password: '',
+          };
+
+        case 'redshift':
+          return {
+            type: 'redshift',
+            host: devOutput.host,
+            port: devOutput.port || 5439,
+            username: devOutput.user,
+            password: devOutput.password,
+            database: devOutput.dbname,
+            schema: devOutput.schema,
+            ssl: devOutput.sslmode === 'require',
+            sslrootcert: devOutput.sslrootcert,
+          };
+
+        case 'databricks':
+          return {
+            type: 'databricks',
+            host: devOutput.host,
+            port: devOutput.port || 443,
+            http_path: devOutput.http_path,
+            token: devOutput.token,
+            database: devOutput.catalog,
+            schema: devOutput.schema,
+          };
+
+        case 'duckdb':
+          // Convert relative path to absolute path relative to the project directory
+          const projectDir = path.dirname(profilesPath);
+          const absolutePath = path.isAbsolute(devOutput.path)
+            ? devOutput.path
+            : path.resolve(projectDir, devOutput.path);
+
+          return {
+            type: 'duckdb',
+            path: absolutePath,
+            database: absolutePath,
+            schema: devOutput.schema || 'main',
+          };
+
+        default:
+          console.warn(`Unsupported DBT connection type: ${devOutput.type}`);
+          return null;
+      }
+    } catch (error) {
+      console.error('Error parsing profiles.yml:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse main.conf file and extract Rosetta connection information
+   */
+  private static async parseMainConf(mainConfPath: string): Promise<RosettaConnection | null> {
+    try {
+      const mainConfContent = await fs.promises.readFile(mainConfPath, 'utf8');
+      const mainConfData = yaml.load(mainConfContent) as any;
+
+      const connections = mainConfData?.connections;
+      if (!connections || !Array.isArray(connections) || connections.length === 0) {
+        return null;
+      }
+
+      // Return the first connection
+      const connection = connections[0];
+      return {
+        name: connection.name,
+        dbType: connection.dbType,
+        databaseName: connection.databaseName,
+        schemaName: connection.schemaName,
+        url: connection.url,
+        userName: connection.userName,
+        password: connection.password,
+      };
+    } catch (error) {
+      console.error('Error parsing main.conf:', error);
+      return null;
+    }
+  }
 }

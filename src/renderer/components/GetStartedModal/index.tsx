@@ -58,7 +58,7 @@ export const GetStartedModal: React.FC<GetStartedModalProps> = ({
     const url = 'https://github.com/rosettadb/dbtstudio_getting_started.git';
 
     try {
-      const { error, authRequired, path, name } = await gitServices.gitClone(url);
+      const { error, authRequired, path, name, dbtConnection, rosettaConnection } = await gitServices.gitClone(url);
 
       if (error) {
         toast.error(error);
@@ -78,12 +78,14 @@ export const GetStartedModal: React.FC<GetStartedModalProps> = ({
       const project = await projectsServices.addProjectFromVCS({
         path,
         name,
+        dbtConnection,
+        rosettaConnection,
       });
 
       await projectsServices.selectProject({ projectId: project.id });
       toast.success('Getting started project created successfully!');
       onClose();
-      navigate('/app/loading');
+      navigate('/app/edit-connection');
     } catch (error) {
       console.error('Error creating getting started project:', error);
       toast.error('Failed to create getting started project. Please try again.');

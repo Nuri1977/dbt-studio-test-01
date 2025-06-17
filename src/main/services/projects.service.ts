@@ -80,7 +80,17 @@ export default class ProjectsService {
     return project;
   }
 
-  static async addProjectFromVCS(projectPath: string, name: string) {
+  static async addProjectFromVCS({
+    path: projectPath,
+    name,
+    dbtConnection,
+    rosettaConnection,
+  }: {
+    path: string;
+    name: string;
+    dbtConnection?: any;
+    rosettaConnection?: any;
+  }) {
     const dbtProjectYmlPath = path.join(projectPath, 'dbt_project.yml');
 
     let newName: string;
@@ -109,6 +119,9 @@ export default class ProjectsService {
       createdAt: new Date().toISOString(),
       path: projectPath,
       isExtracted: false,
+      // Add parsed connection information if available
+      ...(dbtConnection && { dbtConnection }),
+      ...(rosettaConnection && { rosettaConnection }),
     };
 
     const rosettaPath = path.join(projectPath, 'rosetta');

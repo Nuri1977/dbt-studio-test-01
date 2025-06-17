@@ -34,8 +34,15 @@ export const addProject = async (body: { name: string }): Promise<Project> => {
 export const addProjectFromVCS = async (body: {
   name: string;
   path: string;
+  dbtConnection?: any;
+  rosettaConnection?: any;
 }): Promise<Project> => {
-  const { data } = await client.post<{ name: string; path: string }, Project>(
+  const { data } = await client.post<{
+    name: string;
+    path: string;
+    dbtConnection?: any;
+    rosettaConnection?: any;
+  }, Project>(
     'project:addFromVCS',
     body,
   );
