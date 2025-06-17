@@ -27,6 +27,7 @@ import SearchOffIcon from '@mui/icons-material/SearchOff';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import DriveFolderUploadIcon from '@mui/icons-material/DriveFolderUpload';
 import DatabaseIcon from '@mui/icons-material/Storage';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import { toast } from 'react-toastify';
 import { FolderOpen } from '@mui/icons-material';
 import { projectsServices } from '../../services';
@@ -36,7 +37,7 @@ import {
   useGetProjects,
   useGetSettings,
 } from '../../controllers';
-import { CloneRepoModal, Icon } from '../../components';
+import { CloneRepoModal, Icon, GetStartedModal } from '../../components';
 import { icons, logo } from '../../../../assets';
 import connectionIcons from '../../../../assets/connectionIcons';
 import { AppLayout } from '../../layouts';
@@ -249,6 +250,7 @@ const SelectProject: React.FC = () => {
     id: string;
     name: string;
   } | null>(null);
+  const [isGetStartedModalOpen, setIsGetStartedModalOpen] = React.useState(false);
 
   const { mutate: deleteProject } = useDeleteProject({
     onSuccess: () => {
@@ -382,6 +384,10 @@ const SelectProject: React.FC = () => {
     }
   };
 
+  const handleGetStarted = () => {
+    setIsGetStartedModalOpen(true);
+  };
+
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -397,15 +403,26 @@ const SelectProject: React.FC = () => {
           <EmptyStateDescription variant="body1">
             You don&apos;t have any projects yet.
           </EmptyStateDescription>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={() => setIsAddingProject(true)}
-            sx={{ height: 40 }}
-          >
-            New Project
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={() => setIsAddingProject(true)}
+              sx={{ height: 40 }}
+            >
+              New Project
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<RocketLaunchIcon />}
+              onClick={handleGetStarted}
+              sx={{ height: 40 }}
+            >
+              Get Started
+            </Button>
+          </Box>
         </EmptyStateContainer>
       );
     }
@@ -592,6 +609,19 @@ const SelectProject: React.FC = () => {
                 />
               </SearchContainer>
               <Box sx={{ display: 'flex', gap: 1 }}>
+                {projects.length === 0 && (
+                  <Tooltip title="Import getting started example project">
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={handleGetStarted}
+                      sx={{ height: 40 }}
+                    >
+                      <RocketLaunchIcon sx={{ marginRight: 1 }} fontSize="small" />
+                      Get Started
+                    </Button>
+                  </Tooltip>
+                )}
                 <Tooltip title="Clone from git repository...">
                   <Button
                     variant="contained"
@@ -690,6 +720,10 @@ const SelectProject: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+        <GetStartedModal
+          isOpen={isGetStartedModalOpen}
+          onClose={() => setIsGetStartedModalOpen(false)}
+        />
         {isCloneModalOpen && (
           <CloneRepoModal
             isOpen={isCloneModalOpen}
