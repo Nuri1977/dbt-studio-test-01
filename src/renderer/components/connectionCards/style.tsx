@@ -48,8 +48,8 @@ export const StyledCardContent = styled(CardContent)({
 
 export const StyledCard = styled(Card)({
   maxWidth: 345,
-  width: 280,
-  height: 280,
+  width: 240,
+  height: 252,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',

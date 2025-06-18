@@ -27,7 +27,7 @@ const ConnectionCardsContainer = styled(Box)`
   flex-wrap: wrap;
   gap: 32px;
   padding: 12px 0 36px;
-  max-width: 1300px;
+  max-width: 1000px;
 `;
 
 type ItemType = {
