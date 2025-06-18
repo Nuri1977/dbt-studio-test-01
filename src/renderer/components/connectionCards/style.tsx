@@ -48,13 +48,18 @@ export const StyledCardContent = styled(CardContent)({
 
 export const StyledCard = styled(Card)({
   maxWidth: 345,
-  width: 240,
-  height: 252,
+  width: 280,
+  height: 280,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
   cursor: 'pointer',
   transition: 'all 0.3s ease',
   '&:hover': {
     transform: 'translateY(-4px)',
   },
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
 });
 
 export const MediaImage = styled('img')({
