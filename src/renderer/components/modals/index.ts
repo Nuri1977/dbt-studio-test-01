@@ -7,3 +7,4 @@ export * from './addGitRemoteModal';
 export * from './gitCommitModal';
 export * from './newBranchModal';
 export * from './cloneRepoModal';
+export * from './noAiSetModal';

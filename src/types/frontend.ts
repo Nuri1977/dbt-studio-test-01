@@ -12,6 +12,7 @@ export type AppContextType = {
   schema?: Table[];
   fetchSchema: () => Promise<void>;
   isLoadingSchema?: boolean;
+  isAiProviderSet: boolean;
 };
 
 export type ItemProps = {

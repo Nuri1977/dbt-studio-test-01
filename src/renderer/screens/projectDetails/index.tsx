@@ -18,6 +18,7 @@ import {
   TerminalLayout,
   SplitButton,
   Icon,
+  NoAiSetModal,
 } from '../../components';
 import {
   useGetFileStatuses,
@@ -43,11 +44,13 @@ import { utils } from '../../helpers';
 import { AppLayout } from '../../layouts';
 import { icons } from '../../../../assets';
 import { convertToSourcePath } from '../../helpers/utils';
+import { AppContext } from '../../context';
 
 const ProjectDetails: React.FC = () => {
   const navigate = useNavigate();
   const { data: project, isLoading } = useGetSelectedProject();
   const { data: settings } = useGetSettings();
+  const { isAiProviderSet } = React.useContext(AppContext);
   const [queryData, setQueryData] = React.useState<
     GenerateDashboardResponseType[]
   >([]);
@@ -56,6 +59,7 @@ const ProjectDetails: React.FC = () => {
   const [selectedFilePath, setSelectedFilePath] = React.useState<string>();
   const [fileContent, setFileContent] = React.useState<string>();
   const [businessQueryModal, setBusinessQueryModal] = React.useState(false);
+  const [noAiSetModal, setNoAiSetModal] = React.useState(false);
   const { start, stop, running } = useProcess();
 
   const {
@@ -282,6 +286,14 @@ const ProjectDetails: React.FC = () => {
     return <Navigate to="/app/add-connection/" />;
   }
 
+  const handleBusinessLayerClick = () => {
+    if (isAiProviderSet) {
+      setBusinessQueryModal(true);
+    } else {
+      setNoAiSetModal(true);
+    }
+  };
+
   return (
     <AppLayout
       sidebarContent={
@@ -385,7 +397,7 @@ const ProjectDetails: React.FC = () => {
                       },
                       {
                         name: 'Generate dbt Business Layer',
-                        onClick: () => setBusinessQueryModal(true),
+                        onClick: handleBusinessLayerClick,
                         subTitle: 'Generate dbt Business Layer',
                       },
                     ]}
@@ -461,18 +473,12 @@ const ProjectDetails: React.FC = () => {
                   ) && (
                     <SplitButton
                       title="AI Assistant"
-                      toltipTitle={
-                        !settings?.openAIApiKey || settings.openAIApiKey === ''
-                          ? 'Open AI Api key must be added'
-                          : ''
-                      }
-                      disabled={!settings?.openAIApiKey}
                       isLoading={isLoadingQuery}
                       leftIcon={<AutoAwesome />}
                       menuItems={[
                         {
                           name: 'Auto-Fix Incremental & Unique Key Columns',
-                          onClick: enhanceModel,
+                          onClick: isAiProviderSet ? enhanceModel : () => setNoAiSetModal(true),
                           subTitle: '',
                         },
                       ]}
@@ -483,12 +489,12 @@ const ProjectDetails: React.FC = () => {
                   ) && (
                     <SplitButton
                       title="AI Assistant"
-                      disabled={!settings?.openAIApiKey}
                       isLoading={isLoadingQuery}
+                      leftIcon={<AutoAwesome />}
                       menuItems={[
                         {
                           name: 'Suggest Basic Transformations',
-                          onClick: enhanceStagingModel,
+                          onClick: isAiProviderSet ? enhanceStagingModel : () => setNoAiSetModal(true),
                           subTitle: '',
                         },
                       ]}
@@ -499,12 +505,11 @@ const ProjectDetails: React.FC = () => {
                   ) && (
                     <SplitButton
                       title="AI Assistant"
-                      disabled={!settings?.openAIApiKey}
                       isLoading={isLoadingQuery}
                       menuItems={[
                         {
                           name: 'Generate Dashboards',
-                          onClick: generateDashboards,
+                          onClick: isAiProviderSet ? generateDashboards : () => setNoAiSetModal(true),
                           subTitle: '',
                         },
                       ]}
@@ -543,6 +548,12 @@ const ProjectDetails: React.FC = () => {
             onSubmit={(query) =>
               rosettaDbt(project, `--business -q "${query}"`)
             }
+          />
+        )}
+        {noAiSetModal && (
+          <NoAiSetModal
+            isOpen={noAiSetModal}
+            onClose={() => setNoAiSetModal(false)}
           />
         )}
         {isQueryOpen && (
