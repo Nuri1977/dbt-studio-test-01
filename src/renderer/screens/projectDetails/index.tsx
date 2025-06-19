@@ -42,6 +42,7 @@ import { AI_PROMPTS } from '../../config/constants';
 import { utils } from '../../helpers';
 import { AppLayout } from '../../layouts';
 import { icons } from '../../../../assets';
+import { convertToSourcePath } from '../../helpers/utils';
 
 const ProjectDetails: React.FC = () => {
   const navigate = useNavigate();
@@ -330,7 +331,8 @@ const ProjectDetails: React.FC = () => {
                 if (filePath.endsWith('.yaml')) {
                   filePath = filePath.slice(0, -5);
                 }
-                await dbtTest(project, filePath);
+                const dbtSelection = convertToSourcePath(filePath);
+                await dbtTest(project, dbtSelection);
               }}
               isLoadingFiles={isLoadingDirectories}
               refreshFiles={async () => {
