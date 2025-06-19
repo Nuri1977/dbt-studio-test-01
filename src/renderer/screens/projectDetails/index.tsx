@@ -314,7 +314,8 @@ const ProjectDetails: React.FC = () => {
                 if (filePath.endsWith('.sql')) {
                   filePath = filePath.slice(0, -4);
                 }
-                await dbtRun(project, filePath);
+                const dbtPath = filePath.replace(/\//g, '.');
+                await dbtRun(project, dbtPath);
               }}
               onDbtTest={async (fileNode) => {
                 let filePath = fileNode.path;
