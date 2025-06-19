@@ -86,30 +86,13 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
         const pidMatch = error.message.match(/PID: (\d+)/);
         const pid = pidMatch ? pidMatch[1] : 'unknown';
 
-        // Create a click handler for the kill command
-        const handleKillClick = () => {
-          navigator.clipboard.writeText(`kill -9 ${pid}`);
-          toast.info('Kill command copied to clipboard!');
-        };
 
         // Custom toast with kill command
         toast.error(
           <Box>
-            <Typography>Database is locked by another process.</Typography>
-            <Typography>To fix this, either:</Typography>
-            <Typography>1. Close any open DuckDB CLI sessions</Typography>
-            <Typography>
-              2. Run:{' '}
-              <Link
-                onClick={handleKillClick}
-                sx={{ cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                kill -9 {pid}
-              </Link>{' '}
-              (click to copy)
-            </Typography>
+            <Typography>Database is locked by another process, pid {pid}.</Typography>
+            <Typography>Close any open DuckDB CLI sessions.</Typography>
           </Box>,
-          { autoClose: 10000 },
         );
       } else {
         toast.error(`Test failed: ${error.message}`);
