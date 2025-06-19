@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -27,6 +27,13 @@ type Props = {
   onCancel: () => void;
 };
 
+function shortDuckdbPath(databasePath: string): string {
+  // Get the base filename from the full path
+  // Example /Users/nurilacka/sample_01.duckdb you would get sample_01 without the .duckdb extension
+  const baseName = databasePath.split('/').pop() || '';
+  return baseName.replace(/\.duckdb$/, '');
+}
+
 export const DuckDB: React.FC<Props> = ({ onCancel }) => {
   const { data: project } = useGetSelectedProject();
   const navigate = useNavigate();
@@ -48,6 +55,7 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     database_path: existingConnection?.path || '',
     database: existingConnection?.database || 'main', // For compatibility
     schema: 'main', // DuckDB default schema
+    short_database_path: existingConnection?.path ? shortDuckdbPath(existingConnection.path) : '',
   });
 
   const [isTesting, setIsTesting] = React.useState(false);
@@ -109,7 +117,7 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     }));
 
     setConnectionStatus('idle');
-  };
+  }
 
   const handleFileSelect = () => {
     getFiles(
@@ -157,6 +165,14 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     };
     testConnection(connectionData);
   };
+
+  useEffect(() => {
+    // Update short path whenever database_path changes
+    setFormState((prev) => ({
+      ...prev,
+      short_database_path: shortDuckdbPath(prev.database_path),
+    }));
+  }, [formState.database_path]);
 
   const getIndicatorColor = () => {
     switch (connectionStatus) {

@@ -201,7 +201,7 @@ export default class ConnectorsService {
           name: projectName,
           databaseName:
             connection.type === 'duckdb'
-              ? connection.database_path
+              ? connection.short_database_path
               : connection.database,
           schemaName: connection.schema,
           dbType: connection.type,
