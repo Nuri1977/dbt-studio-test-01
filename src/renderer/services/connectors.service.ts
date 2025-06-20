@@ -20,10 +20,10 @@ export const configureConnection = async (
 export const testConnection = async (
   body: ConnectionInput,
 ): Promise<boolean | BigQueryTestResponse> => {
-  const { data } = await client.post<ConnectionInput, boolean | BigQueryTestResponse>(
-    'connector:test',
-    body,
-  );
+  const { data } = await client.post<
+    ConnectionInput,
+    boolean | BigQueryTestResponse
+  >('connector:test', body);
   return data;
 };
 

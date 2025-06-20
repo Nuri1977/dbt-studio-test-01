@@ -38,12 +38,16 @@ export const SqlEditorComponent: React.FC<Props> = ({
   const saveDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const decorationIdsRef = useRef<string[]>([]);
   const monacoInstanceRef = useRef<typeof monaco | null>(null);
+  const completionProviderRef = useRef<monaco.IDisposable | null>(null);
+  const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(
+    null,
+  );
 
   const handleChange: OnChange = (value) => {
     if (value === undefined) return;
+
     setContent(value);
 
-    // Only save to file if filePath is provided
     if (filePath) {
       if (saveDebounce.current) clearTimeout(saveDebounce.current);
       saveDebounce.current = setTimeout(() => {
@@ -117,28 +121,49 @@ export const SqlEditorComponent: React.FC<Props> = ({
     );
   };
 
+  // Register completion provider (can be called multiple times safely)
+  const registerCompletionProvider = () => {
+    const monacoInstance = monacoInstanceRef.current;
+    if (!monacoInstance) return;
+
+    // Dispose existing provider
+    if (completionProviderRef.current) {
+      completionProviderRef.current.dispose();
+    }
+
+    // Register new completion provider
+    completionProviderRef.current =
+      monacoInstance.languages.registerCompletionItemProvider('sql', {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+
+          const suggestions = completions.map((item) => ({
+            ...item,
+            range,
+          }));
+          return { suggestions };
+        },
+      });
+  };
+
+  // Update completion provider when completions change
+  useEffect(() => {
+    registerCompletionProvider();
+  }, [completions]);
+
   const handleEditorMount: OnMount = (editor, monacoInstance) => {
     monacoInstanceRef.current = monacoInstance;
+    editorInstanceRef.current = editor;
     if (editorRef) editorRef.current = editor;
 
-    monacoInstance.languages.registerCompletionItemProvider('sql', {
-      provideCompletionItems: (model, position) => {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
-
-        const suggestions = completions.map((item) => ({
-          ...item,
-          range,
-        }));
-
-        return { suggestions };
-      },
-    });
+    // Register initial completion provider after monaco is ready
+    registerCompletionProvider();
 
     addRunIconsToBlocks(editor);
 
@@ -165,6 +190,9 @@ export const SqlEditorComponent: React.FC<Props> = ({
   useEffect(() => {
     return () => {
       if (saveDebounce.current) clearTimeout(saveDebounce.current);
+      if (completionProviderRef.current) {
+        completionProviderRef.current.dispose();
+      }
     };
   }, []);
 

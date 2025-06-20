@@ -40,12 +40,24 @@ export const useConfigureConnection = (
 };
 
 export const useTestConnection = (
-  customOptions?: UseMutationOptions<boolean | BigQueryTestResponse, CustomError, ConnectionInput>,
-): UseMutationResult<boolean | BigQueryTestResponse, CustomError, ConnectionInput> => {
+  customOptions?: UseMutationOptions<
+    boolean | BigQueryTestResponse,
+    CustomError,
+    ConnectionInput
+  >,
+): UseMutationResult<
+  boolean | BigQueryTestResponse,
+  CustomError,
+  ConnectionInput
+> => {
   const { onSuccess: onCustomSuccess, onError: onCustomError } =
     customOptions || {};
 
-  return useMutation<boolean | BigQueryTestResponse, CustomError, ConnectionInput>({
+  return useMutation<
+    boolean | BigQueryTestResponse,
+    CustomError,
+    ConnectionInput
+  >({
     mutationFn: async (data: ConnectionInput) => {
       return connectorsServices.testConnection(data);
     },
