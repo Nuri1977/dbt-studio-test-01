@@ -79,6 +79,7 @@ export type DatabricksConnection = Omit<
 export type DuckDBConnection = Omit<ConnectionBase, 'username' | 'password'> & {
   type: 'duckdb';
   database_path: string; // Path to .duckdb file
+  short_database_path: string;
   // No username/password needed for DuckDB
 };
 
@@ -207,6 +208,7 @@ export type DataBase = {
   projects: Project[];
   settings: SettingsType;
   selectedProject?: Project;
+  queries: Record<string, string>;
 };
 
 export type FileNode = {

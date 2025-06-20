@@ -609,7 +609,7 @@ const SelectProject: React.FC = () => {
                 />
               </SearchContainer>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                {projects.length === 0 && (
+                {!projects.some(p => p.name === 'dbtstudio_getting_started') && (
                   <Tooltip title="Import getting started example project">
                     <Button
                       variant="outlined"

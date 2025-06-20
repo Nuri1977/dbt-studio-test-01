@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -27,6 +27,13 @@ type Props = {
   onCancel: () => void;
 };
 
+function shortDuckdbPath(databasePath: string): string {
+  // Get the base filename from the full path
+  // Example /Users/nurilacka/sample_01.duckdb you would get sample_01 without the .duckdb extension
+  const baseName = databasePath.split('/').pop() || '';
+  return baseName.replace(/\.duckdb$/, '');
+}
+
 export const DuckDB: React.FC<Props> = ({ onCancel }) => {
   const { data: project } = useGetSelectedProject();
   const navigate = useNavigate();
@@ -48,6 +55,7 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     database_path: existingConnection?.path || '',
     database: existingConnection?.database || 'main', // For compatibility
     schema: 'main', // DuckDB default schema
+    short_database_path: existingConnection?.path ? shortDuckdbPath(existingConnection.path) : '',
   });
 
   const [isTesting, setIsTesting] = React.useState(false);
@@ -86,30 +94,13 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
         const pidMatch = error.message.match(/PID: (\d+)/);
         const pid = pidMatch ? pidMatch[1] : 'unknown';
 
-        // Create a click handler for the kill command
-        const handleKillClick = () => {
-          navigator.clipboard.writeText(`kill -9 ${pid}`);
-          toast.info('Kill command copied to clipboard!');
-        };
 
         // Custom toast with kill command
         toast.error(
           <Box>
-            <Typography>Database is locked by another process.</Typography>
-            <Typography>To fix this, either:</Typography>
-            <Typography>1. Close any open DuckDB CLI sessions</Typography>
-            <Typography>
-              2. Run:{' '}
-              <Link
-                onClick={handleKillClick}
-                sx={{ cursor: 'pointer', textDecoration: 'underline' }}
-              >
-                kill -9 {pid}
-              </Link>{' '}
-              (click to copy)
-            </Typography>
+            <Typography>Database is locked by another process, pid {pid}.</Typography>
+            <Typography>Close any open DuckDB CLI sessions.</Typography>
           </Box>,
-          { autoClose: 10000 },
         );
       } else {
         toast.error(`Test failed: ${error.message}`);
@@ -126,7 +117,7 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     }));
 
     setConnectionStatus('idle');
-  };
+  }
 
   const handleFileSelect = () => {
     getFiles(
@@ -174,6 +165,14 @@ export const DuckDB: React.FC<Props> = ({ onCancel }) => {
     };
     testConnection(connectionData);
   };
+
+  useEffect(() => {
+    // Update short path whenever database_path changes
+    setFormState((prev) => ({
+      ...prev,
+      short_database_path: shortDuckdbPath(prev.database_path),
+    }));
+  }, [formState.database_path]);
 
   const getIndicatorColor = () => {
     switch (connectionStatus) {

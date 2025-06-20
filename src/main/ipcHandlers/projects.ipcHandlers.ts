@@ -28,12 +28,15 @@ const registerProjectHandlers = () => {
 
   ipcMain.handle(
     'project:addFromVCS',
-    async (_event, body: {
-      path: string;
-      name: string;
-      dbtConnection?: any;
-      rosettaConnection?: any;
-    }) => {
+    async (
+      _event,
+      body: {
+        path: string;
+        name: string;
+        dbtConnection?: any;
+        rosettaConnection?: any;
+      },
+    ) => {
       return ProjectsService.addProjectFromVCS(body);
     },
   );
@@ -71,6 +74,17 @@ const registerProjectHandlers = () => {
       return ProjectsService.extractSchemaFromModelYaml(body);
     },
   );
+
+  ipcMain.handle(
+    'project:updateQuery',
+    async (_event, body: { projectId: string; query: string }) => {
+      return ProjectsService.updateQuery(body);
+    },
+  );
+
+  ipcMain.handle('project:getQuery', async (_event, body: Project) => {
+    return ProjectsService.getQuery(body);
+  });
 
   ipcMain.handle('project:getDirectory', async (_event, body: Project) => {
     return ProjectsService.getDirectoryStructure(body);

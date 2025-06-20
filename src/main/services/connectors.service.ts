@@ -133,7 +133,9 @@ export default class ConnectorsService {
       case 'redshift':
         return testRedshiftConnection(connection);
       default:
-        throw new Error(`Unsupported connection type: ${(connection as any).type}`);
+        throw new Error(
+          `Unsupported connection type: ${(connection as any).type}`,
+        );
     }
   }
 
@@ -162,7 +164,9 @@ export default class ConnectorsService {
         return executeRedshiftQuery(connection, query);
       default:
         // Use the literal type instead of accessing the property to avoid TypeScript error
-        throw new Error(`Unsupported connection type: ${(connection as any).type}`);
+        throw new Error(
+          `Unsupported connection type: ${(connection as any).type}`,
+        );
     }
   }
 
@@ -201,7 +205,7 @@ export default class ConnectorsService {
           name: projectName,
           databaseName:
             connection.type === 'duckdb'
-              ? connection.database_path
+              ? connection.short_database_path
               : connection.database,
           schemaName: connection.schema,
           dbType: connection.type,
@@ -554,7 +558,7 @@ export default class ConnectorsService {
     if (!gitignoreContent.includes('.secrets')) {
       await fs.promises.writeFile(
         gitignorePath,
-        (gitignoreContent + '\n.secrets/\n').trim() + '\n',
+        `${`${gitignoreContent}\n.secrets/\n`.trim()}\n`,
         'utf8',
       );
     }
@@ -602,13 +606,17 @@ export default class ConnectorsService {
   /**
    * Parse profiles.yml file and extract DBT connection information
    */
-  private static async parseProfilesYml(profilesPath: string): Promise<DBTConnection | null> {
+  private static async parseProfilesYml(
+    profilesPath: string,
+  ): Promise<DBTConnection | null> {
     try {
       const profilesContent = await fs.promises.readFile(profilesPath, 'utf8');
       const profilesData = yaml.load(profilesContent) as any;
 
       // Find the first profile (excluding 'config')
-      const profileNames = Object.keys(profilesData).filter(key => key !== 'config');
+      const profileNames = Object.keys(profilesData).filter(
+        (key) => key !== 'config',
+      );
       if (profileNames.length === 0) return null;
 
       const profile = profilesData[profileNames[0]];
@@ -706,13 +714,19 @@ export default class ConnectorsService {
   /**
    * Parse main.conf file and extract Rosetta connection information
    */
-  private static async parseMainConf(mainConfPath: string): Promise<RosettaConnection | null> {
+  private static async parseMainConf(
+    mainConfPath: string,
+  ): Promise<RosettaConnection | null> {
     try {
       const mainConfContent = await fs.promises.readFile(mainConfPath, 'utf8');
       const mainConfData = yaml.load(mainConfContent) as any;
 
       const connections = mainConfData?.connections;
-      if (!connections || !Array.isArray(connections) || connections.length === 0) {
+      if (
+        !connections ||
+        !Array.isArray(connections) ||
+        connections.length === 0
+      ) {
         return null;
       }
 

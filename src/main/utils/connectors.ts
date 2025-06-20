@@ -3,6 +3,8 @@ import pg from 'pg';
 import snowflake from 'snowflake-sdk';
 import { BigQuery } from '@google-cloud/bigquery';
 import { DuckDBInstance } from '@duckdb/node-api';
+import { DBSQLClient } from '@databricks/sql';
+import fs from 'fs';
 import {
   PostgresConnection,
   QueryResponseType,
@@ -14,8 +16,6 @@ import {
   RedshiftConnection,
 } from '../../types/backend';
 import { SNOWFLAKE_TYPE_MAP } from './constants';
-import { DBSQLClient } from '@databricks/sql';
-import fs from 'fs';
 
 export async function testPostgresConnection(
   config: PostgresConnection,
@@ -419,6 +419,9 @@ export const executeBigQueryQuery = async (
 export async function testDuckDBConnection(
   config: DuckDBConnection,
 ): Promise<boolean> {
+  let instance: any = null;
+  let connection: any = null;
+
   try {
     if (!config.database_path) {
       console.error(
@@ -427,7 +430,6 @@ export async function testDuckDBConnection(
       return false;
     }
 
-    const fs = require('fs');
     try {
       const stats = fs.statSync(config.database_path);
       if (stats.isDirectory()) {
@@ -440,13 +442,13 @@ export async function testDuckDBConnection(
       // File doesn't exist yet - DuckDB will create it
     }
 
-    const instance = await DuckDBInstance.create(config.database_path);
-    const connection = await instance.connect();
+    // Create instance and connection
+    instance = await DuckDBInstance.create(config.database_path);
+    connection = await instance.connect();
 
     try {
       const result = await connection.run('SELECT 1 as connection_test');
       const rows = await result.getRows();
-      connection.closeSync();
 
       let success = false;
       if (rows.length > 0) {
@@ -458,10 +460,10 @@ export async function testDuckDBConnection(
           success = rows[0] === 1;
         }
       }
+
       return success;
-    } catch (error) {
-      console.error('❌ Error during query execution:', error);
-      connection.closeSync();
+    } catch (queryError) {
+      console.error('❌ Error during query execution:', queryError);
       return false;
     }
   } catch (error: any) {
@@ -495,6 +497,34 @@ export async function testDuckDBConnection(
     }
 
     throw error;
+  } finally {
+    // Ensure proper cleanup in all cases
+    try {
+      if (connection) {
+        // Close connection first
+        if (typeof connection.close === 'function') {
+          await connection.close();
+        } else if (typeof connection.closeSync === 'function') {
+          connection.closeSync();
+        }
+      }
+    } catch (closeError) {
+      console.warn('Warning: Error closing DuckDB connection:', closeError);
+    }
+
+    try {
+      if (instance) {
+        if (typeof instance.close === 'function') {
+          await instance.close();
+        } else if (typeof instance.closeSync === 'function') {
+          instance.closeSync();
+        } else if (typeof instance.terminate === 'function') {
+          await instance.terminate();
+        }
+      }
+    } catch (instanceError) {
+      console.warn('Warning: Error closing DuckDB instance:', instanceError);
+    }
   }
 }
 
@@ -502,34 +532,64 @@ export const executeDuckDBQuery = async (
   config: DuckDBConnection,
   query: string,
 ): Promise<QueryResponseType> => {
+  let instance: any = null;
+  let connection: any = null;
+
   try {
-    const instance = await DuckDBInstance.create(config.database_path);
-    const connection = await instance.connect();
+    instance = await DuckDBInstance.create(config.database_path);
+    connection = await instance.connect();
+
+    const result = await connection.run(query);
+    const rows = await result.getRows();
+
+    // Extract field information from the result schema
+    const fields =
+      rows.length > 0
+        ? Object.keys(rows[0] as any).map((name, index) => ({
+            name,
+            type: index, // Simple type mapping for now
+          }))
+        : [];
+
+    return {
+      success: true,
+      data: rows as any[],
+      fields,
+    };
+  } catch (error: any) {
+    console.error('❌ DuckDB query execution failed:', error);
+    return {
+      success: false,
+      error: error?.message || 'Unknown error occurred during query execution',
+    };
+  } finally {
+    // Ensure proper cleanup in all cases
+    try {
+      if (connection) {
+        // Close connection first
+        if (typeof connection.close === 'function') {
+          await connection.close();
+        } else if (typeof connection.closeSync === 'function') {
+          connection.closeSync();
+        }
+      }
+    } catch (closeError) {
+      console.warn('Warning: Error closing DuckDB connection:', closeError);
+    }
 
     try {
-      const result = await connection.run(query);
-      const rows = await result.getRows();
-      connection.closeSync();
-
-      // Extract field information from the result schema
-      const fields =
-        rows.length > 0
-          ? Object.keys(rows[0] as any).map((name, index) => ({
-              name,
-              type: index, // Simple type mapping for now
-            }))
-          : [];
-
-      return {
-        success: true,
-        data: rows as any[],
-        fields,
-      };
-    } catch (error: any) {
-      connection.closeSync();
-      return { success: false, error: error?.message };
+      if (instance) {
+        // Close instance to release the database lock
+        if (typeof instance.close === 'function') {
+          await instance.close();
+        } else if (typeof instance.closeSync === 'function') {
+          instance.closeSync();
+        } else if (typeof instance.terminate === 'function') {
+          await instance.terminate();
+        }
+      }
+    } catch (instanceError) {
+      console.warn('Warning: Error closing DuckDB instance:', instanceError);
     }
-  } catch (error: any) {
-    return { success: false, error: error?.message };
   }
 };

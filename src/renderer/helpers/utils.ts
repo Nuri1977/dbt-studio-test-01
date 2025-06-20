@@ -307,3 +307,17 @@ export const registerMonacoCompletionProvider = (
 
   return null;
 };
+
+export const convertToSourcePath = (path: string): string => {
+  const parts = path.split('/');
+  const modelName = parts[parts.length - 1]; // Get the last part (filename)
+
+  // Parse schema_table format (e.g., "public_users" -> "public.users")
+  const underscoreParts = modelName.split('_');
+  if (underscoreParts.length >= 2) {
+    const schema = underscoreParts[0]; // e.g., "public"
+    const table = underscoreParts.slice(1).join('_'); // e.g., "users"
+    return `source:${schema}.${table}`;
+  }
+  return `source:${modelName}`;
+};

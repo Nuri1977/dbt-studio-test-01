@@ -10,26 +10,57 @@ export default class DuckDBSchemaExtractor {
   }
 
   private async executeQuery(query: string): Promise<any[]> {
-    const instance = await DuckDBInstance.create(this.database_path);
-    const connection = await instance.connect();
+    let instance: any = null;
+    let connection: any = null;
 
     try {
+      instance = await DuckDBInstance.create(this.database_path);
+      connection = await instance.connect();
+
       const result = await connection.run(query);
       const rows = await result.getRows();
-      connection.closeSync();
       return rows;
     } catch (error) {
-      connection.closeSync();
+      console.error('❌ DuckDB query execution failed:', error);
       throw error;
+    } finally {
+      // Ensure proper cleanup in all cases
+      try {
+        if (connection) {
+          // Close connection first
+          if (typeof connection.close === 'function') {
+            await connection.close();
+          } else if (typeof connection.closeSync === 'function') {
+            connection.closeSync();
+          }
+        }
+      } catch (closeError) {
+        console.warn('Warning: Error closing DuckDB connection:', closeError);
+      }
+
+      try {
+        if (instance) {
+          // Close instance to release the database lock
+          if (typeof instance.close === 'function') {
+            await instance.close();
+          } else if (typeof instance.closeSync === 'function') {
+            instance.closeSync();
+          } else if (typeof instance.terminate === 'function') {
+            await instance.terminate();
+          }
+        }
+      } catch (instanceError) {
+        console.warn('Warning: Error closing DuckDB instance:', instanceError);
+      }
     }
   }
 
   private async getTables(): Promise<string[]> {
     try {
       const rows = await this.executeQuery(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'main' 
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'main'
           AND table_type = 'BASE TABLE'
       `);
       // DuckDB returns 2D arrays, so we need to handle both object and array formats
@@ -63,9 +94,9 @@ export default class DuckDBSchemaExtractor {
   private async getViews(): Promise<string[]> {
     try {
       const rows = await this.executeQuery(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'main' 
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'main'
           AND table_type = 'VIEW'
       `);
       return rows
@@ -87,14 +118,14 @@ export default class DuckDBSchemaExtractor {
     try {
       // Try using information_schema first
       const rows = await this.executeQuery(`
-        SELECT 
+        SELECT
           column_name,
           data_type,
           ordinal_position,
           is_nullable,
           column_default
-        FROM information_schema.columns 
-        WHERE table_name = '${tableName}' 
+        FROM information_schema.columns
+        WHERE table_name = '${tableName}'
           AND table_schema = 'main'
         ORDER BY ordinal_position
       `);
@@ -102,7 +133,11 @@ export default class DuckDBSchemaExtractor {
       return rows
         .map((row, index) => {
           // Handle both 2D array and object formats
-          let columnName, dataType, ordinalPosition, isNullable, columnDefault;
+          let columnName;
+          let dataType;
+          let ordinalPosition;
+          let isNullable;
+          let columnDefault;
 
           if (Array.isArray(row)) {
             // 2D array format: [column_name, data_type, ordinal_position, is_nullable, column_default]
@@ -138,7 +173,9 @@ export default class DuckDBSchemaExtractor {
         const rows = await this.executeQuery(`DESCRIBE ${tableName}`);
         return rows
           .map((row, index) => {
-            let columnName, columnType, nullable;
+            let columnName;
+            let columnType;
+            let nullable;
 
             if (Array.isArray(row)) {
               // DESCRIBE typically returns: [column_name, column_type, null, key, default, extra]

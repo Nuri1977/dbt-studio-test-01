@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppContextType } from '../../types/frontend';
 import { Splash } from '../components';
-import { useGetProjects, useGetSelectedProject } from '../controllers';
+import { useGetProjects, useGetSelectedProject, useGetSettings } from '../controllers';
 import { Project, Table } from '../../types/backend';
 import { projectsServices } from '../services';
 
@@ -18,11 +18,13 @@ export const AppContext = React.createContext<AppContextType>({
   setSidebarContent: () => {},
   fetchSchema: async () => {},
   schema: [],
+  isAiProviderSet: false,
 });
 
 const AppProvider: React.FC<Props> = ({ children }) => {
   const { data: projects = [] } = useGetProjects();
   const { data: selectedProject, isLoading } = useGetSelectedProject();
+  const { data: settings } = useGetSettings();
 
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isLoadingSchema, setIsLoadingSchema] = React.useState(false);
@@ -45,6 +47,11 @@ const AppProvider: React.FC<Props> = ({ children }) => {
     }
   };
 
+  // Check if AI provider is set
+  const isAiProviderSet = React.useMemo(() => {
+    return !!(settings?.openAIApiKey && settings.openAIApiKey.trim() !== '');
+  }, [settings?.openAIApiKey]);
+
   React.useEffect(() => {
     fetchSchema();
   }, [selectedProject]);
@@ -62,6 +69,7 @@ const AppProvider: React.FC<Props> = ({ children }) => {
       isSidebarOpen,
       setIsSidebarOpen,
       isLoadingSchema,
+      isAiProviderSet,
     };
   }, [
     projects,
@@ -70,6 +78,7 @@ const AppProvider: React.FC<Props> = ({ children }) => {
     isLoadingSchema,
     isSidebarOpen,
     selectedProject,
+    isAiProviderSet,
   ]);
 
   if (isLoading) {

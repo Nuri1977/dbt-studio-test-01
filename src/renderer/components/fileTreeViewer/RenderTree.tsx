@@ -86,6 +86,32 @@ const RenderTree: React.FC<Props> = ({
         <LabelContainer>
           {label}
           <ActionsContainer className="actions-container">
+            {/* Add run button for staging folder */}
+            {node.type === 'folder' &&
+              node.path.includes(`/${projectName}/models/`) &&
+              node.name === 'staging' && (
+                <IconButton
+                  disabled={isRunning}
+                  onClick={async (event) => {
+                    event.stopPropagation();
+                    setIsRunning(true);
+                    await onDbtRun(node);
+                    setIsRunning(false);
+                  }}
+                >
+                  {isRunning ? (
+                    <CircularProgress size={16} color="primary" />
+                  ) : (
+                    <Tooltip title="dbt run --select staging">
+                      <PlayArrow
+                        sx={{ height: 16, width: 16 }}
+                        color="primary"
+                      />
+                    </Tooltip>
+                  )}
+                </IconButton>
+              )}
+            {/* Existing SQL file run button */}
             {node.path.includes(`/${projectName}/models/`) &&
               node.path.endsWith('sql') && (
                 <IconButton
@@ -111,6 +137,7 @@ const RenderTree: React.FC<Props> = ({
                   )}
                 </IconButton>
               )}
+            {/* Existing YAML test button */}
             {node.path.includes(`/${projectName}/models/`) &&
               !node.path.endsWith('models/model.yaml') &&
               node.path.endsWith('yaml') && (
