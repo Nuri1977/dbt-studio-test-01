@@ -33,7 +33,9 @@ export type ProjectChannels =
   | 'project:enhanceModelQuery'
   | 'project:extractSchemaFromModelYaml'
   | 'project:zipDir'
-  | 'project:addFromVCS';
+  | 'project:addFromVCS'
+  | 'project:updateQuery'
+  | 'project:getQuery';
 
 export type ConnectorChannels =
   | 'connector:configure'

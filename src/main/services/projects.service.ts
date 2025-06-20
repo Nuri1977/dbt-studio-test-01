@@ -504,8 +504,28 @@ export default class ProjectsService {
       case 'duckdb':
         return this.extractDuckDBSchema(connection as DuckDBDBTConnection);
       default:
-        throw new Error(`Unsupported connection type: "${(connection as any).type}"`);
+        throw new Error(
+          `Unsupported connection type: "${(connection as any).type}"`,
+        );
     }
+  }
+
+  static async updateQuery({
+    projectId,
+    query,
+  }: {
+    projectId: string;
+    query: string;
+  }): Promise<void> {
+    const db = await loadDatabaseFile();
+    const queries = db.queries ?? {};
+    queries[projectId] = query;
+    await updateDatabase('queries', queries);
+  }
+
+  static async getQuery(project: Project): Promise<string> {
+    const db = await loadDatabaseFile();
+    return db.queries?.[project.id] ?? '';
   }
 
   static async extractSchemaFromModelYaml(project: Project): Promise<Table[]> {

@@ -37,15 +37,15 @@ export const addProjectFromVCS = async (body: {
   dbtConnection?: any;
   rosettaConnection?: any;
 }): Promise<Project> => {
-  const { data } = await client.post<{
-    name: string;
-    path: string;
-    dbtConnection?: any;
-    rosettaConnection?: any;
-  }, Project>(
-    'project:addFromVCS',
-    body,
-  );
+  const { data } = await client.post<
+    {
+      name: string;
+      path: string;
+      dbtConnection?: any;
+      rosettaConnection?: any;
+    },
+    Project
+  >('project:addFromVCS', body);
   return data;
 };
 
@@ -56,6 +56,21 @@ export const addProjectFromFolder = async (): Promise<Project> => {
 
 export const updateProject = async (body: Project): Promise<Project> => {
   const { data } = await client.post<Project, Project>('project:update', body);
+  return data;
+};
+
+export const updateProjectQuery = async (body: {
+  projectId: string;
+  query: string;
+}): Promise<void> => {
+  await client.post<{ projectId: string; query: string }>(
+    'project:updateQuery',
+    body,
+  );
+};
+
+export const getQuery = async (body: Project): Promise<string> => {
+  const { data } = await client.post<Project, string>('project:getQuery', body);
   return data;
 };
 

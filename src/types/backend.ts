@@ -207,6 +207,7 @@ export type DataBase = {
   projects: Project[];
   settings: SettingsType;
   selectedProject?: Project;
+  queries: Record<string, string>;
 };
 
 export type FileNode = {

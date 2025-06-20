@@ -1,5 +1,5 @@
 /* eslint-disable no-plusplus, no-continue */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import MonacoEditor, { OnMount, OnChange, loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { useTheme } from '@mui/material';
@@ -7,7 +7,6 @@ import { projectsServices } from '../../../services';
 import { Container } from './styles';
 import { Shimmer } from '../../shimmer';
 import { CompletionItem } from '../../../../types/frontend';
-import { utils } from '../../../helpers';
 
 type Props = {
   filePath?: string;
@@ -15,6 +14,7 @@ type Props = {
   setContent: (value: string) => void;
   completions?: Omit<CompletionItem, 'range'>[];
   editorRef?: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
+  onRunSelected?: (query: string) => void;
 };
 
 export const SqlEditorComponent: React.FC<Props> = ({
@@ -23,17 +23,11 @@ export const SqlEditorComponent: React.FC<Props> = ({
   setContent,
   completions = [],
   editorRef,
+  onRunSelected,
 }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const monacoTheme = isDarkMode ? 'vs-dark' : 'light';
-  const prevCompletionsLengthRef = useRef(0);
-
-  // Track the monaco instance and completion provider with state and refs
-  const monacoInstanceRef = useRef<typeof monaco | null>(null);
-  const [monacoLoaded, setMonacoLoaded] = useState(false);
-  const completionProviderRef = useRef<monaco.IDisposable | null>(null);
-  const [completionProviderVersion, setCompletionProviderVersion] = useState(0);
 
   loader.config({
     paths: {
@@ -42,73 +36,135 @@ export const SqlEditorComponent: React.FC<Props> = ({
   });
 
   const saveDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const decorationIdsRef = useRef<string[]>([]);
+  const monacoInstanceRef = useRef<typeof monaco | null>(null);
 
   const handleChange: OnChange = (value) => {
     if (value === undefined) return;
     setContent(value);
 
-    if (saveDebounce.current) clearTimeout(saveDebounce.current);
-
-    saveDebounce.current = setTimeout(() => {
-      if (filePath) {
+    // Only save to file if filePath is provided
+    if (filePath) {
+      if (saveDebounce.current) clearTimeout(saveDebounce.current);
+      saveDebounce.current = setTimeout(() => {
         projectsServices.saveFileContent({ path: filePath, content: value });
-      }
-    }, 500);
+      }, 500);
+    }
   };
 
-  // Update completion provider when completions change
-  useEffect(() => {
-    // Only run this effect when monaco is loaded and completions have changed
-    if (!monacoLoaded || !monacoInstanceRef.current) return;
+  const extractQueryBlock = (
+    model: monaco.editor.ITextModel,
+    lineNumber: number,
+  ) => {
+    const totalLines = model.getLineCount();
+    let start = lineNumber;
+    let end = lineNumber;
 
-    // Check if completions have actually changed
-    const completionsChanged = prevCompletionsLengthRef.current !== completions.length;
-    prevCompletionsLengthRef.current = completions.length;
+    // Expand upward
+    for (let i = lineNumber - 1; i >= 1; i--) {
+      const line = model.getLineContent(i).trim();
+      if (line === '') break;
+      start = i;
+    }
 
-    if (completionsChanged && completions.length > 0) {
-      console.log(`Updating completions provider with ${completions.length} items`);
+    // Expand downward
+    for (let i = lineNumber + 1; i <= totalLines; i++) {
+      const line = model.getLineContent(i).trim();
+      if (line === '') break;
+      end = i;
+    }
 
-      // Use the utility function to register the provider
-      completionProviderRef.current = utils.registerMonacoCompletionProvider(
-        monacoInstanceRef.current,
-        completions,
-        completionProviderRef.current
-      );
+    return model
+      .getValueInRange(
+        new monaco.Range(start, 1, end, model.getLineMaxColumn(end)),
+      )
+      .trim();
+  };
 
-      // Update version to trigger a re-render
-      setCompletionProviderVersion(prev => prev + 1);
+  const addRunIconsToBlocks = (editor: monaco.editor.IStandaloneCodeEditor) => {
+    const model = editor.getModel();
+    const monacoInstance = monacoInstanceRef.current;
+    if (!model || !monacoInstance) return;
 
-      // If there's an editor instance and completions were added,
-      // force Monaco to refresh intellisense
-      if (editorRef?.current) {
-        try {
-          editorRef.current.trigger('', 'editor.action.triggerSuggest', {});
-        } catch (err) {
-          // Ignore errors from triggering suggestions
-        }
+    const totalLines = model.getLineCount();
+    const newDecorations: monaco.editor.IModelDeltaDecoration[] = [];
+
+    let isInsideBlock = false;
+    for (let i = 1; i <= totalLines; i++) {
+      const line = model.getLineContent(i).trim();
+
+      if (line === '') {
+        isInsideBlock = false;
+        continue;
+      }
+
+      if (!isInsideBlock) {
+        newDecorations.push({
+          range: new monacoInstance.Range(i, 1, i, 1),
+          options: {
+            isWholeLine: true,
+            glyphMarginClassName: 'run-query-glyph',
+            glyphMarginHoverMessage: { value: '▶ Run this query block' },
+          },
+        });
+        isInsideBlock = true;
       }
     }
-  }, [completions, monacoLoaded]);
 
-  // Handle Monaco editor mounting
+    decorationIdsRef.current = editor.deltaDecorations(
+      decorationIdsRef.current,
+      newDecorations,
+    );
+  };
+
   const handleEditorMount: OnMount = (editor, monacoInstance) => {
     monacoInstanceRef.current = monacoInstance;
     if (editorRef) editorRef.current = editor;
 
-    // Mark Monaco as loaded
-    setMonacoLoaded(true);
+    monacoInstance.languages.registerCompletionItemProvider('sql', {
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
 
-    // Don't register completion provider here - let the useEffect handle it
-    // This prevents double registration on mount
+        const suggestions = completions.map((item) => ({
+          ...item,
+          range,
+        }));
+
+        return { suggestions };
+      },
+    });
+
+    addRunIconsToBlocks(editor);
+
+    editor.onDidChangeModelContent(() => {
+      setTimeout(() => addRunIconsToBlocks(editor), 150);
+    });
+
+    editor.onMouseDown((e) => {
+      if (
+        e.target.type ===
+          monacoInstance.editor.MouseTargetType.GUTTER_GLYPH_MARGIN &&
+        onRunSelected
+      ) {
+        const lineNumber = e.target.position?.lineNumber;
+        const model = editor.getModel();
+        if (!lineNumber || !model) return;
+
+        const query = extractQueryBlock(model, lineNumber);
+        if (query) onRunSelected(query);
+      }
+    });
   };
 
-  // Cleanup effect
   useEffect(() => {
     return () => {
       if (saveDebounce.current) clearTimeout(saveDebounce.current);
-      if (completionProviderRef.current) {
-        completionProviderRef.current.dispose();
-      }
     };
   }, []);
 
@@ -125,13 +181,12 @@ export const SqlEditorComponent: React.FC<Props> = ({
         loading={<Shimmer text="Loading editor..." />}
         options={{
           fontSize: 14,
+          glyphMargin: true,
           minimap: { enabled: false },
           lineNumbers: 'on',
           scrollBeyondLastLine: false,
           automaticLayout: true,
-          glyphMargin: false, // Disable glyph margin since we don't need run icons
         }}
-        key={`monaco-editor-${completionProviderVersion}`}
       />
     </Container>
   );
