@@ -15,6 +15,7 @@ export const TerminalContainer = styled('form')(({ theme }) => ({
 export const OutputBox = styled(Box)(({ theme }) => ({
   flex: 1,
   overflowY: 'auto',
+  color: '#fff',
   backgroundColor: '#121212',
   paddingRight: theme.spacing(1),
   marginBottom: theme.spacing(1),
