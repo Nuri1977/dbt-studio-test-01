@@ -65,7 +65,7 @@ const Terminal: React.FC<Props> = ({ project }) => {
         const navigateCommand = `cd "${project.path}"`;
         newCommand = `${navigateCommand} && ${tmpCommand}`;
       }
-      runCommand(newCommand).catch();
+      runCommand(newCommand).catch(() => {});
       setCommand('');
     }
   };
@@ -82,7 +82,6 @@ const Terminal: React.FC<Props> = ({ project }) => {
           <Typography
             key={`out-${index}`}
             variant="body2"
-            color="text.primary"
             sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
             dangerouslySetInnerHTML={{ __html: ansiConverter.toHtml(line) }}
           />
