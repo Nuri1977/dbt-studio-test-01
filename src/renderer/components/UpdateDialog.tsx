@@ -70,9 +70,11 @@ export const UpdateDialog: React.FC = () => {
           {updateInfo.currentVersion}.
         </Typography>
         {updateInfo.releaseNotes && (
-          <Typography variant="body2" color="textSecondary">
-            {updateInfo.releaseNotes}
-          </Typography>
+          <Typography 
+            variant="body2" 
+            color="textSecondary"
+            dangerouslySetInnerHTML={{ __html: updateInfo.releaseNotes }}
+          />
         )}
       </DialogContent>
       <DialogActions>

@@ -11,22 +11,29 @@ export default class UpdateManager {
     const result = await autoUpdater.checkForUpdates();
     if (!result) return null;
 
+    const currentVersion = app.getVersion();
+    const newVersion = result.updateInfo.version;
     const rejectedVersion = this.store.get('rejectedVersion');
     const lastInstalledVersion = this.store.get('lastInstalledVersion');
 
     // Don't show update modal on fresh installation
     if (!lastInstalledVersion) {
-      this.store.set('lastInstalledVersion', app.getVersion());
+      this.store.set('lastInstalledVersion', currentVersion);
       return null;
     }
 
-    if (rejectedVersion === result.updateInfo.version) {
+    // Don't show update modal if versions are the same
+    if (currentVersion === newVersion) {
+      return null;
+    }
+
+    if (rejectedVersion === newVersion) {
       return null;
     }
 
     return {
-      currentVersion: app.getVersion(),
-      newVersion: result.updateInfo.version,
+      currentVersion,
+      newVersion,
       releaseNotes: result.updateInfo.releaseNotes,
     };
   }
