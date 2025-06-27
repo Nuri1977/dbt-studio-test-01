@@ -12,6 +12,14 @@ export default class UpdateManager {
     if (!result) return null;
 
     const rejectedVersion = this.store.get('rejectedVersion');
+    const lastInstalledVersion = this.store.get('lastInstalledVersion');
+
+    // Don't show update modal on fresh installation
+    if (!lastInstalledVersion) {
+      this.store.set('lastInstalledVersion', app.getVersion());
+      return null;
+    }
+
     if (rejectedVersion === result.updateInfo.version) {
       return null;
     }
