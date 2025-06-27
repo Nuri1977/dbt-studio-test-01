@@ -26,6 +26,7 @@ import { QueryClientContextProvider } from './context/QueryClientContext';
 import { themeStorageManager, getStoredThemeMode } from './utils/themeStorage';
 import { ScrollbarStyles } from './components/scrollbarStyles';
 import Loading from './screens/loading';
+import { UpdateDialog } from './components/UpdateDialog';
 
 const App: React.FC = () => {
   return (
@@ -75,6 +76,7 @@ const AppWithProjectProvider: React.FC = () => {
             storageManager={themeStorageManager}
           >
             <App />
+            <UpdateDialog />
             <ToastContainer
               position="bottom-right"
               autoClose={5000}
