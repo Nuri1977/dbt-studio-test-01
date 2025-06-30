@@ -38,6 +38,22 @@ export default class UpdateManager {
     };
   }
 
+  static async checkForSettingsUpdates(mainWindow: BrowserWindow) {
+    const result = await autoUpdater.checkForUpdates();
+    if (!result) return null;
+    const currentVersion = app.getVersion();
+    const newVersion = result.updateInfo.version;
+    const lastInstalledVersion = this.store.get('lastInstalledVersion');
+
+    return {
+      currentVersion,
+      newVersion,
+      lastInstalledVersion,
+      releaseNotes: result.updateInfo.releaseNotes,
+    };
+
+  }
+
   static async downloadAndInstall() {
     if (this.updateDownloaded) {
       autoUpdater.quitAndInstall();

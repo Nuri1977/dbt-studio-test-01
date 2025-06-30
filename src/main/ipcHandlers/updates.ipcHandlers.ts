@@ -6,6 +6,10 @@ const registerUpdateHandlers = (mainWindow: BrowserWindow) => {
     return UpdateManager.checkForUpdates(mainWindow);
   });
 
+  ipcMain.handle('updates:check-settings', async () => {
+    return UpdateManager.checkForSettingsUpdates(mainWindow);
+  });
+
   ipcMain.handle('updates:download', async () => {
     return UpdateManager.downloadAndInstall();
   });

@@ -20,11 +20,25 @@ import {
 interface UpdateInfo {
   currentVersion: string;
   newVersion: string;
-  releaseNotes?: string;
+	lastInstalledVersion?: string;
+	releaseNotes?: string;
 }
 
 interface InstallationSettingsProps {
   // You can add props here if needed
+}
+
+// Helper function to compare semantic versions (returns 1 if v1>v2, -1 if v1<v2, 0 if equal)
+function compareVersions(v1: string, v2: string): number {
+  const a = v1.split('.').map(Number);
+  const b = v2.split('.').map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const num1 = a[i] || 0;
+    const num2 = b[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
 }
 
 const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
@@ -97,10 +111,11 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
     setIsCheckingForUpdates(true);
     setError(null);
     try {
-      const result = await window.electron.ipcRenderer.invoke('updates:check');
+      const result = await window.electron.ipcRenderer.invoke('updates:check-settings');
       if (result) {
         setUpdateInfo(result);
         setLatestVersion(result.newVersion);
+
       } else {
         setUpdateInfo(null);
         setLatestVersion(currentVersion); // No update, so latest = current
@@ -130,7 +145,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   };
 
   const isUpdateAvailable =
-    latestVersion && currentVersion && latestVersion !== currentVersion;
+    latestVersion && currentVersion && compareVersions(latestVersion, currentVersion) === 1;
 
   return (
     <Box sx={{ maxWidth: 600, width: '100%' }}>

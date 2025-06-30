@@ -89,6 +89,7 @@ export type ProcessChannels =
 
 export type UpdateChannels =
   | 'updates:check'
+  | 'updates:check-settings'
   | 'updates:download'
   | 'updates:reject-version';
 
