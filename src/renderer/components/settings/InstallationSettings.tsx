@@ -203,6 +203,11 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                 Last checked: {lastChecked.toLocaleString()}
               </Typography>
             )}
+            {!isUpdateAvailable && latestVersion && currentVersion && (
+              <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
+                You are running the latest version.
+              </Typography>
+            )}
           </Box>
           {updateInfo && (
             <>
