@@ -8,9 +8,10 @@ import {
   Typography,
   CircularProgress,
   IconButton,
+  Alert,
+  Collapse,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { toast } from 'react-toastify';
 
 interface UpdateInfo {
   currentVersion: string;
@@ -21,6 +22,8 @@ interface UpdateInfo {
 export const UpdateDialog: React.FC = () => {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showRestartButton, setShowRestartButton] = useState(false);
 
   useEffect(() => {
     // Check for updates when component mounts
@@ -46,12 +49,17 @@ export const UpdateDialog: React.FC = () => {
     setIsDownloading(true);
     try {
       await window.electron.ipcRenderer.invoke('updates:download');
-      toast.success('Update downloaded. The app will restart to install.');
+      setIsDownloading(false);
+      setShowSuccessAlert(true);
+      setShowRestartButton(true);
     } catch (error) {
       console.error('Error downloading update:', error);
-      toast.error('Failed to download update.');
       setIsDownloading(false);
     }
+  };
+
+  const handleRestart = async () => {
+    await window.electron.ipcRenderer.invoke('updates:restart');
   };
 
   const handleReject = async () => {
@@ -72,6 +80,23 @@ export const UpdateDialog: React.FC = () => {
 
   return (
     <Dialog open={!!updateInfo} onClose={handleClose}>
+      {/* Success Alert */}
+      <Collapse in={showSuccessAlert}>
+        <Alert
+          severity="success"
+          onClose={() => setShowSuccessAlert(false)}
+          sx={{ mb: 2 }}
+          action={
+            showRestartButton && (
+              <Button color="inherit" size="small" onClick={handleRestart}>
+                Restart Now
+              </Button>
+            )
+          }
+        >
+          Update downloaded. The update will be installed after you restart the app.
+        </Alert>
+      </Collapse>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         Update Available
         <IconButton
@@ -90,8 +115,8 @@ export const UpdateDialog: React.FC = () => {
           {updateInfo.currentVersion}.
         </Typography>
         {updateInfo.releaseNotes && (
-          <Typography 
-            variant="body2" 
+          <Typography
+            variant="body2"
             color="textSecondary"
             dangerouslySetInnerHTML={{ __html: updateInfo.releaseNotes }}
           />
