@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import UpdateManager from '../services/update.service';
+import { autoUpdater } from 'electron-updater';
 
 const registerUpdateHandlers = (mainWindow: BrowserWindow) => {
   ipcMain.handle('updates:check', async () => {
@@ -16,6 +17,10 @@ const registerUpdateHandlers = (mainWindow: BrowserWindow) => {
 
   ipcMain.handle('updates:reject-version', async (_event, version: string) => {
     return UpdateManager.rejectVersion(version);
+  });
+
+  ipcMain.handle('updates:restart', async () => {
+    autoUpdater.quitAndInstall();
   });
 };
 

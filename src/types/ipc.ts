@@ -91,7 +91,9 @@ export type UpdateChannels =
   | 'updates:check'
   | 'updates:check-settings'
   | 'updates:download'
+  | 'updates:restart'
   | 'updates:reject-version';
+
 
 export type Channels =
   | TestChannels
