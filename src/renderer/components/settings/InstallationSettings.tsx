@@ -35,6 +35,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Get current version on component mount
   useEffect(() => {
@@ -44,10 +45,9 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   const getCurrentVersion = async () => {
     try {
-      // Use the same approach as AboutSettings
       setCurrentVersion(window.electron?.app?.version || 'Unknown');
     } catch (error) {
-      console.error('Error getting current version:', error);
+      setError('Failed to get current version.');
       setCurrentVersion('Unknown');
     }
   };
@@ -82,7 +82,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
         userAgent: userAgent
       });
     } catch (error) {
-      console.error('Error getting system info:', error);
+      setError('Failed to get system information.');
       setSystemInfo({
         platform: 'Unknown',
         arch: 'Unknown',
@@ -95,16 +95,19 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   const checkForUpdates = async () => {
     setIsCheckingForUpdates(true);
+    setError(null);
     try {
       const result = await window.electron.ipcRenderer.invoke('updates:check');
-      setUpdateInfo(result);
-      setLastChecked(new Date());
-      if (result && result.newVersion) {
+      if (result) {
+        setUpdateInfo(result);
         setLatestVersion(result.newVersion);
       } else {
-        setLatestVersion('');
+        setUpdateInfo(null);
+        setLatestVersion(currentVersion); // No update, so latest = current
       }
+      setLastChecked(new Date());
     } catch (error) {
+      setError('Failed to check for updates.');
       console.error('Error checking for updates:', error);
     } finally {
       setIsCheckingForUpdates(false);
@@ -115,10 +118,12 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
     if (!updateInfo) return;
     
     setIsUpdating(true);
+    setError(null);
     try {
       await window.electron.ipcRenderer.invoke('updates:download');
       // The app will restart automatically after download
     } catch (error) {
+      setError('Failed to download update.');
       console.error('Error downloading update:', error);
       setIsUpdating(false);
     }
@@ -129,6 +134,11 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   return (
     <Box sx={{ maxWidth: 600, width: '100%' }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <Typography variant="h6" gutterBottom>
         Installation Information
       </Typography>
