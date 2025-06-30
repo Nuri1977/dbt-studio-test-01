@@ -29,6 +29,7 @@ interface InstallationSettingsProps {
 
 const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   const [currentVersion, setCurrentVersion] = useState<string>('');
+  const [latestVersion, setLatestVersion] = useState<string>('');
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -43,11 +44,11 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   const getCurrentVersion = async () => {
     try {
-      // For now, we'll use a hardcoded version - you can implement the IPC call later
-      setCurrentVersion('1.0.6');
+      // Use the same approach as AboutSettings
+      setCurrentVersion(window.electron?.app?.version || 'Unknown');
     } catch (error) {
       console.error('Error getting current version:', error);
-      setCurrentVersion('1.0.6');
+      setCurrentVersion('Unknown');
     }
   };
 
@@ -98,6 +99,11 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
       const result = await window.electron.ipcRenderer.invoke('updates:check');
       setUpdateInfo(result);
       setLastChecked(new Date());
+      if (result && result.newVersion) {
+        setLatestVersion(result.newVersion);
+      } else {
+        setLatestVersion('');
+      }
     } catch (error) {
       console.error('Error checking for updates:', error);
     } finally {
@@ -118,14 +124,14 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
     }
   };
 
-  const isUpdateAvailable = updateInfo && updateInfo.currentVersion !== updateInfo.newVersion;
+  const isUpdateAvailable =
+    latestVersion && currentVersion && latestVersion !== currentVersion;
 
   return (
     <Box sx={{ maxWidth: 600, width: '100%' }}>
       <Typography variant="h6" gutterBottom>
         Installation Information
       </Typography>
-      
       {/* Current Version Card */}
       <Card sx={{ mb: 2 }}>
         <CardContent>
@@ -133,9 +139,8 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
             <Info color="primary" />
             <Typography variant="h6">Current Installation</Typography>
           </Box>
-          
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Typography variant="body1">Version:</Typography>
+            <Typography variant="body1">Current Version:</Typography>
             <Chip 
               label={currentVersion} 
               color="primary" 
@@ -143,13 +148,34 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
               icon={<CheckCircle />}
             />
           </Box>
-          
+          {latestVersion && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Typography variant="body1">Latest Version:</Typography>
+              <Chip 
+                label={latestVersion} 
+                color={isUpdateAvailable ? 'warning' : 'success'} 
+                variant="outlined"
+                icon={<Update />}
+              />
+            </Box>
+          )}
+          {isUpdateAvailable && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleUpdate}
+              disabled={isUpdating}
+              startIcon={isUpdating ? <CircularProgress size={16} /> : <Download />}
+              sx={{ mt: 1 }}
+            >
+              {isUpdating ? 'Downloading...' : 'Download and Install'}
+            </Button>
+          )}
           <Typography variant="body2" color="textSecondary">
             Rosetta dbt Studio - Turn Raw Data into Business Insights
           </Typography>
         </CardContent>
       </Card>
-
       {/* Update Check Section */}
       <Card sx={{ mb: 2 }}>
         <CardContent>
@@ -157,7 +183,6 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
             <Update color="primary" />
             <Typography variant="h6">Updates</Typography>
           </Box>
-          
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Button
               variant="outlined"
@@ -173,24 +198,20 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
             >
               {isCheckingForUpdates ? 'Checking...' : 'Check for Updates'}
             </Button>
-            
             {lastChecked && (
               <Typography variant="body2" color="textSecondary">
                 Last checked: {lastChecked.toLocaleString()}
               </Typography>
             )}
           </Box>
-
           {updateInfo && (
             <>
               <Divider sx={{ my: 2 }} />
-              
               {isUpdateAvailable ? (
                 <Alert severity="info" sx={{ mb: 2 }}>
                   <Typography variant="body1" gutterBottom>
-                    A new version ({updateInfo.newVersion}) is available!
+                    A new version ({latestVersion}) is available!
                   </Typography>
-                  
                   {updateInfo.releaseNotes && (
                     <Box sx={{ mt: 1, mb: 2 }}>
                       <Typography variant="body2" color="textSecondary">
@@ -203,23 +224,6 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                       />
                     </Box>
                   )}
-                  
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleUpdate}
-                    disabled={isUpdating}
-                    startIcon={
-                      isUpdating ? (
-                        <CircularProgress size={16} />
-                      ) : (
-                        <Download />
-                      )
-                    }
-                    sx={{ mt: 1 }}
-                  >
-                    {isUpdating ? 'Downloading...' : 'Download and Install'}
-                  </Button>
                 </Alert>
               ) : (
                 <Alert severity="success">
@@ -232,14 +236,12 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
           )}
         </CardContent>
       </Card>
-
       {/* System Information */}
       <Card>
         <CardContent>
           <Typography variant="h6" gutterBottom>
             System Information
           </Typography>
-          
           <Box sx={{ display: 'grid', gap: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="body2" color="textSecondary">
@@ -249,7 +251,6 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                 {systemInfo?.platform || 'Loading...'}
               </Typography>
             </Box>
-            
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="body2" color="textSecondary">
                 Architecture:
@@ -258,7 +259,6 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                 {systemInfo?.arch || 'Loading...'}
               </Typography>
             </Box>
-            
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="body2" color="textSecondary">
                 Electron Version:
@@ -267,7 +267,6 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                 {systemInfo?.electronVersion || 'Loading...'}
               </Typography>
             </Box>
-            
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="body2" color="textSecondary">
                 Chrome Version:
@@ -276,7 +275,6 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                 {systemInfo?.chromeVersion || 'Loading...'}
               </Typography>
             </Box>
-            
             {systemInfo?.userAgent && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="body2" color="textSecondary" gutterBottom>
