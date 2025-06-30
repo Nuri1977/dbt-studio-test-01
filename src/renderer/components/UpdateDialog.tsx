@@ -7,7 +7,10 @@ import {
   Button,
   Typography,
   CircularProgress,
+  IconButton,
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import { toast } from 'react-toastify';
 
 interface UpdateInfo {
   currentVersion: string;
@@ -43,8 +46,10 @@ export const UpdateDialog: React.FC = () => {
     setIsDownloading(true);
     try {
       await window.electron.ipcRenderer.invoke('updates:download');
+      toast.success('Update downloaded. The app will restart to install.');
     } catch (error) {
       console.error('Error downloading update:', error);
+      toast.error('Failed to download update.');
       setIsDownloading(false);
     }
   };
@@ -61,9 +66,24 @@ export const UpdateDialog: React.FC = () => {
 
   if (!updateInfo) return null;
 
+  const handleClose = () => {
+    setUpdateInfo(null);
+  };
+
   return (
-    <Dialog open={!!updateInfo} onClose={handleReject}>
-      <DialogTitle>Update Available</DialogTitle>
+    <Dialog open={!!updateInfo} onClose={handleClose}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        Update Available
+        <IconButton
+          aria-label="close"
+          onClick={handleClose}
+          edge="end"
+          size="small"
+          sx={{ ml: 2 }}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
       <DialogContent>
         <Typography variant="body1" gutterBottom>
           A new version ({updateInfo.newVersion}) is available. You are running{' '}
@@ -78,7 +98,7 @@ export const UpdateDialog: React.FC = () => {
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleReject} color="primary">
+        <Button onClick={handleReject} color="primary" disabled={isDownloading}>
           Not Now
         </Button>
         <Button
