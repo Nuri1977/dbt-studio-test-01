@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Alert,
   Divider,
+  Backdrop,
 } from '@mui/material';
 import {
   Download,
@@ -16,6 +17,7 @@ import {
   Update,
   Info,
 } from '@mui/icons-material';
+import { toast } from 'react-toastify';
 
 interface UpdateInfo {
   currentVersion: string;
@@ -50,6 +52,9 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [showRestartButton, setShowRestartButton] = useState(false);
+  const isLinux = typeof navigator !== 'undefined' && /linux/i.test(navigator.userAgent);
 
   // Get current version on component mount
   useEffect(() => {
@@ -131,16 +136,38 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   const handleUpdate = async () => {
     if (!updateInfo) return;
-    
     setIsUpdating(true);
+    setIsBlocking(true);
     setError(null);
     try {
-      await window.electron.ipcRenderer.invoke('updates:download');
-      // The app will restart automatically after download
+      const res = await window.electron.ipcRenderer.invoke('updates:download');
+      setIsUpdating(false);
+      setIsBlocking(false);
+      if (!res) {
+        toast.info('No update was downloaded.');
+        setShowRestartButton(false);
+        return;
+      }
+      if (isLinux) {
+        toast.success('Update downloaded. Please close and restart the app manually to complete the update.');
+        setShowRestartButton(false);
+      } else {
+        toast.success('Update downloaded. The update will be installed after you restart the app.');
+        setShowRestartButton(true);
+      }
     } catch (error) {
       setError('Failed to download update.');
-      console.error('Error downloading update:', error);
+      toast.error('Failed to download update.');
       setIsUpdating(false);
+      setIsBlocking(false);
+    }
+  };
+
+  const handleRestart = async () => {
+    try {
+      await window.electron.ipcRenderer.invoke('updates:restart');
+    } catch (error) {
+      toast.error('Failed to restart and install update.');
     }
   };
 
@@ -149,6 +176,9 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   return (
     <Box sx={{ maxWidth: 600, width: '100%' }}>
+      <Backdrop open={isBlocking} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, color: '#fff' }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -194,6 +224,17 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
               sx={{ mt: 1 }}
             >
               {isUpdating ? 'Downloading...' : 'Download and Install'}
+            </Button>
+          )}
+          {!isLinux && showRestartButton && (
+            <Button
+              onClick={handleRestart}
+              color="secondary"
+              variant="outlined"
+              disabled={isUpdating}
+              sx={{ mt: 1, ml: 2 }}
+            >
+              Restart Now
             </Button>
           )}
           <Typography variant="body2" color="textSecondary">
