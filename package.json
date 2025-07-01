@@ -209,7 +209,7 @@
     "productName": "Rosetta dbt Studio",
     "appId": "org.rosettadb.dbtStudio",
     "asar": true,
-    "asarUnpack": "**\\*.{node,dll}",
+    "asarUnpack": "**/*.node",
     "files": [
       "dist",
       "node_modules",
