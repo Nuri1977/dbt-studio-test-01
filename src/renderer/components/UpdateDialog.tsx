@@ -131,15 +131,17 @@ export const UpdateDialog: React.FC = () => {
         <Button onClick={handleReject} color="primary" disabled={isDownloading}>
           Not Now
         </Button>
-        <Button
-          onClick={handleUpdate}
-          color="primary"
-          variant="contained"
-          disabled={isDownloading}
-          startIcon={isDownloading ? <CircularProgress size={16} /> : null}
-        >
-          {isDownloading ? 'Downloading...' : 'Update Now'}
-        </Button>
+        {!showRestartButton && (
+          <Button
+            onClick={handleUpdate}
+            color="primary"
+            variant="contained"
+            disabled={isDownloading}
+            startIcon={isDownloading ? <CircularProgress size={16} /> : null}
+          >
+            {isDownloading ? 'Downloading...' : 'Update Now'}
+          </Button>
+        )}
         {!isLinux && showRestartButton && (
           <Button
             onClick={handleRestart}
