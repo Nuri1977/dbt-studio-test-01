@@ -18,6 +18,11 @@ import {
   Info,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
+import {
+  useCheckForSettingsUpdates,
+  useDownloadUpdate,
+  useRestartUpdate,
+} from '../../controllers/update.controller';
 
 interface UpdateInfo {
   currentVersion: string;
@@ -55,6 +60,10 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   const [isBlocking, setIsBlocking] = useState(false);
   const [showRestartButton, setShowRestartButton] = useState(false);
   const isLinux = typeof navigator !== 'undefined' && /linux/i.test(navigator.userAgent);
+
+  const checkForSettingsUpdates = useCheckForSettingsUpdates();
+  const downloadUpdate = useDownloadUpdate();
+  const restartUpdate = useRestartUpdate();
 
   // Get current version on component mount
   useEffect(() => {
@@ -116,11 +125,10 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
     setIsCheckingForUpdates(true);
     setError(null);
     try {
-      const result = await window.electron.ipcRenderer.invoke('updates:check-settings');
+      const result = await checkForSettingsUpdates();
       if (result) {
         setUpdateInfo(result);
         setLatestVersion(result.newVersion);
-
       } else {
         setUpdateInfo(null);
         setLatestVersion(currentVersion); // No update, so latest = current
@@ -140,7 +148,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
     setIsBlocking(true);
     setError(null);
     try {
-      const res = await window.electron.ipcRenderer.invoke('updates:download');
+      const res = await downloadUpdate();
       setIsUpdating(false);
       setIsBlocking(false);
       if (!res) {
@@ -165,7 +173,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   const handleRestart = async () => {
     try {
-      await window.electron.ipcRenderer.invoke('updates:restart');
+      await restartUpdate();
     } catch (error) {
       toast.error('Failed to restart and install update.');
     }

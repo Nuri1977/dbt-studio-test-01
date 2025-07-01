@@ -11,6 +11,12 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { toast } from 'react-toastify';
+import {
+  useCheckForUpdates,
+  useDownloadUpdate,
+  useRestartUpdate,
+  useRejectUpdateVersion,
+} from '../controllers/update.controller';
 
 interface UpdateInfo {
   currentVersion: string;
@@ -24,18 +30,23 @@ export const UpdateDialog: React.FC = () => {
   const [showRestartButton, setShowRestartButton] = useState(false);
   const isLinux = /linux/i.test(navigator.userAgent);
 
+  const checkForUpdates = useCheckForUpdates();
+  const downloadUpdate = useDownloadUpdate();
+  const restartUpdate = useRestartUpdate();
+  const rejectUpdateVersion = useRejectUpdateVersion();
+
   useEffect(() => {
     // Check for updates when component mounts
-    checkForUpdates();
+    handleCheckForUpdates();
 
     // Check every hour
-    const interval = setInterval(checkForUpdates, 60 * 60 * 1000);
+    const interval = setInterval(handleCheckForUpdates, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const checkForUpdates = async () => {
+  const handleCheckForUpdates = async () => {
     try {
-      const result = await window.electron.ipcRenderer.invoke('updates:check');
+      const result = await checkForUpdates();
       if (result) {
         setUpdateInfo(result);
       }
@@ -47,7 +58,7 @@ export const UpdateDialog: React.FC = () => {
   const handleUpdate = async () => {
     setIsDownloading(true);
     try {
-      const res = await window.electron.ipcRenderer.invoke('updates:download');
+      const res = await downloadUpdate();
       setIsDownloading(false);
       if (!res) {
         toast.info('No update was downloaded.');
@@ -70,7 +81,7 @@ export const UpdateDialog: React.FC = () => {
 
   const handleRestart = async () => {
     try {
-      await window.electron.ipcRenderer.invoke('updates:restart');
+      await restartUpdate();
     } catch (error) {
       toast.error('Failed to restart and install update.');
     }
@@ -78,10 +89,7 @@ export const UpdateDialog: React.FC = () => {
 
   const handleReject = async () => {
     if (updateInfo) {
-      await window.electron.ipcRenderer.invoke(
-        'updates:reject-version',
-        updateInfo.newVersion,
-      );
+      await rejectUpdateVersion(updateInfo.newVersion);
       setUpdateInfo(null);
     }
   };
