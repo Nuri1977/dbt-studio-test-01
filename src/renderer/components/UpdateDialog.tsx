@@ -8,6 +8,7 @@ import {
   Typography,
   CircularProgress,
   IconButton,
+  Backdrop,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { toast } from 'react-toastify';
@@ -97,63 +98,75 @@ export const UpdateDialog: React.FC = () => {
   };
 
   return (
-    <Dialog open={!!updateInfo} onClose={handleClose}>
-      <DialogTitle
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
+    <>
+      <Backdrop
+        open={isDownloading}
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, color: '#fff' }}
       >
-        Update Available
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          edge="end"
-          size="small"
-          sx={{ ml: 2 }}
+        <CircularProgress color="inherit" />
+      </Backdrop>
+      <Dialog open={!!updateInfo} onClose={handleClose}>
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
         >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>
-        <Typography variant="body1" gutterBottom>
-          A new version ({updateInfo.newVersion}) is available. You are running{' '}
-          {updateInfo.currentVersion}.
-        </Typography>
-        {updateInfo.releaseNotes && (
-          <Typography
-            variant="body2"
-            color="textSecondary"
-            dangerouslySetInnerHTML={{ __html: updateInfo.releaseNotes }}
-          />
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleReject} color="primary" disabled={isDownloading}>
-          Not Now
-        </Button>
-        {!showRestartButton ? (
+          Update Available
+          <IconButton
+            aria-label="close"
+            onClick={handleClose}
+            edge="end"
+            size="small"
+            sx={{ ml: 2 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            A new version ({updateInfo.newVersion}) is available. You are
+            running {updateInfo.currentVersion}.
+          </Typography>
+          {updateInfo.releaseNotes && (
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              dangerouslySetInnerHTML={{ __html: updateInfo.releaseNotes }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
           <Button
-            onClick={handleUpdate}
+            onClick={handleReject}
             color="primary"
-            variant="contained"
-            disabled={isDownloading}
-            startIcon={isDownloading ? <CircularProgress size={16} /> : null}
-          >
-            {isDownloading ? 'Downloading...' : 'Update Now'}
-          </Button>
-        ) : (
-          <Button
-            onClick={handleRestart}
-            color="secondary"
-            variant="outlined"
             disabled={isDownloading}
           >
-            Restart Now
+            Not Now
           </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+          {!showRestartButton ? (
+            <Button
+              onClick={handleUpdate}
+              color="primary"
+              variant="contained"
+              disabled={isDownloading}
+              startIcon={isDownloading ? <CircularProgress size={16} /> : null}
+            >
+              {isDownloading ? 'Downloading...' : 'Update Now'}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleRestart}
+              color="secondary"
+              variant="outlined"
+              disabled={isDownloading}
+            >
+              Restart Now
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
