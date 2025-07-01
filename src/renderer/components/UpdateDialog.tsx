@@ -28,21 +28,11 @@ export const UpdateDialog: React.FC = () => {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showRestartButton, setShowRestartButton] = useState(false);
-  const isLinux = /linux/i.test(navigator.userAgent);
 
   const checkForUpdates = useCheckForUpdates();
   const downloadUpdate = useDownloadUpdate();
   const restartUpdate = useRestartUpdate();
   const rejectUpdateVersion = useRejectUpdateVersion();
-
-  useEffect(() => {
-    // Check for updates when component mounts
-    handleCheckForUpdates();
-
-    // Check every hour
-    const interval = setInterval(handleCheckForUpdates, 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleCheckForUpdates = async () => {
     try {
@@ -55,6 +45,15 @@ export const UpdateDialog: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    // Check for updates when component mounts
+    handleCheckForUpdates();
+
+    // Check every hour
+    const interval = setInterval(handleCheckForUpdates, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleUpdate = async () => {
     setIsDownloading(true);
     try {
@@ -65,13 +64,10 @@ export const UpdateDialog: React.FC = () => {
         setShowRestartButton(false);
         return;
       }
-      if (isLinux) {
-        toast.success('Update downloaded. Please close and restart the app manually to complete the update.');
-        setShowRestartButton(false);
-      } else {
-        toast.success('Update downloaded. The update will be installed after you restart the app.');
-        setShowRestartButton(true);
-      }
+      toast.success(
+        'Update downloaded. The update will be installed after you restart the app.',
+      );
+      setShowRestartButton(true);
     } catch (error) {
       console.error('Error downloading update:', error);
       toast.error('Failed to download update.');
@@ -102,7 +98,13 @@ export const UpdateDialog: React.FC = () => {
 
   return (
     <Dialog open={!!updateInfo} onClose={handleClose}>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
         Update Available
         <IconButton
           aria-label="close"
@@ -131,7 +133,7 @@ export const UpdateDialog: React.FC = () => {
         <Button onClick={handleReject} color="primary" disabled={isDownloading}>
           Not Now
         </Button>
-        {!showRestartButton && (
+        {!showRestartButton ? (
           <Button
             onClick={handleUpdate}
             color="primary"
@@ -141,8 +143,7 @@ export const UpdateDialog: React.FC = () => {
           >
             {isDownloading ? 'Downloading...' : 'Update Now'}
           </Button>
-        )}
-        {!isLinux && showRestartButton && (
+        ) : (
           <Button
             onClick={handleRestart}
             color="secondary"

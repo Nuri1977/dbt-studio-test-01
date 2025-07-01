@@ -11,12 +11,7 @@ import {
   Divider,
   Backdrop,
 } from '@mui/material';
-import {
-  Download,
-  CheckCircle,
-  Update,
-  Info,
-} from '@mui/icons-material';
+import { Download, CheckCircle, Update, Info } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import {
   useCheckForSettingsUpdates,
@@ -27,8 +22,8 @@ import {
 interface UpdateInfo {
   currentVersion: string;
   newVersion: string;
-	lastInstalledVersion?: string;
-	releaseNotes?: string;
+  lastInstalledVersion?: string;
+  releaseNotes?: string;
 }
 
 interface InstallationSettingsProps {
@@ -39,7 +34,7 @@ interface InstallationSettingsProps {
 function compareVersions(v1: string, v2: string): number {
   const a = v1.split('.').map(Number);
   const b = v2.split('.').map(Number);
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
     const num1 = a[i] || 0;
     const num2 = b[i] || 0;
     if (num1 > num2) return 1;
@@ -59,22 +54,15 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [isBlocking, setIsBlocking] = useState(false);
   const [showRestartButton, setShowRestartButton] = useState(false);
-  const isLinux = typeof navigator !== 'undefined' && /linux/i.test(navigator.userAgent);
 
   const checkForSettingsUpdates = useCheckForSettingsUpdates();
   const downloadUpdate = useDownloadUpdate();
   const restartUpdate = useRestartUpdate();
 
-  // Get current version on component mount
-  useEffect(() => {
-    getCurrentVersion();
-    getSystemInfo();
-  }, []);
-
   const getCurrentVersion = async () => {
     try {
       setCurrentVersion(window.electron?.app?.version || 'Unknown');
-    } catch (error) {
+    } catch (err: any) {
       setError('Failed to get current version.');
       setCurrentVersion('Unknown');
     }
@@ -82,8 +70,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
 
   const getSystemInfo = async () => {
     try {
-      const userAgent = navigator.userAgent;
-      
+      const { userAgent } = navigator;
       // Detect OS
       let os = 'Unknown';
       if (userAgent.includes('Mac')) os = 'macOS';
@@ -93,33 +80,42 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
       // Detect architecture from user agent
       let arch = 'Unknown';
       if (userAgent.includes('Intel')) arch = 'Intel';
-      else if (userAgent.includes('arm64') || userAgent.includes('ARM64')) arch = 'ARM64';
-      else if (userAgent.includes('x86_64') || userAgent.includes('x64')) arch = 'x64';
-      else if (userAgent.includes('i386') || userAgent.includes('x86')) arch = 'x86';
+      else if (userAgent.includes('arm64') || userAgent.includes('ARM64'))
+        arch = 'ARM64';
+      else if (userAgent.includes('x86_64') || userAgent.includes('x64'))
+        arch = 'x64';
+      else if (userAgent.includes('i386') || userAgent.includes('x86'))
+        arch = 'x86';
 
       // Extract versions from user agent
       const chromeMatch = userAgent.match(/Chrome\/([0-9.]+)/);
       const electronMatch = userAgent.match(/Electron\/([0-9.]+)/);
-      
+
       setSystemInfo({
         platform: os,
-        arch: arch,
+        arch,
         electronVersion: electronMatch ? electronMatch[1] : 'Unknown',
         nodeVersion: 'Available in main process',
         chromeVersion: chromeMatch ? chromeMatch[1] : 'Unknown',
-        userAgent: userAgent
+        userAgent,
       });
-    } catch (error) {
+    } catch (err) {
       setError('Failed to get system information.');
       setSystemInfo({
         platform: 'Unknown',
         arch: 'Unknown',
         electronVersion: 'Unknown',
         nodeVersion: 'Unknown',
-        chromeVersion: 'Unknown'
+        chromeVersion: 'Unknown',
       });
     }
   };
+
+  // Get current version on component mount
+  useEffect(() => {
+    getCurrentVersion();
+    getSystemInfo();
+  }, []);
 
   const checkForUpdates = async () => {
     setIsCheckingForUpdates(true);
@@ -134,7 +130,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
         setLatestVersion(currentVersion); // No update, so latest = current
       }
       setLastChecked(new Date());
-    } catch (error) {
+    } catch (err) {
       setError('Failed to check for updates.');
       console.error('Error checking for updates:', error);
     } finally {
@@ -156,14 +152,11 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
         setShowRestartButton(false);
         return;
       }
-      if (isLinux) {
-        toast.success('Update downloaded. Please close and restart the app manually to complete the update.');
-        setShowRestartButton(false);
-      } else {
-        toast.success('Update downloaded. The update will be installed after you restart the app.');
-        setShowRestartButton(true);
-      }
-    } catch (error) {
+      toast.success(
+        'Update downloaded. Please close and restart the app manually to complete the update.',
+      );
+      setShowRestartButton(false);
+    } catch (err: any) {
       setError('Failed to download update.');
       toast.error('Failed to download update.');
       setIsUpdating(false);
@@ -174,17 +167,22 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
   const handleRestart = async () => {
     try {
       await restartUpdate();
-    } catch (error) {
+    } catch (err) {
       toast.error('Failed to restart and install update.');
     }
   };
 
   const isUpdateAvailable =
-    latestVersion && currentVersion && compareVersions(latestVersion, currentVersion) === 1;
+    latestVersion &&
+    currentVersion &&
+    compareVersions(latestVersion, currentVersion) === 1;
 
   return (
     <Box sx={{ maxWidth: 600, width: '100%' }}>
-      <Backdrop open={isBlocking} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, color: '#fff' }}>
+      <Backdrop
+        open={isBlocking}
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, color: '#fff' }}
+      >
         <CircularProgress color="inherit" />
       </Backdrop>
       {error && (
@@ -204,9 +202,9 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Typography variant="body1">Current Version:</Typography>
-            <Chip 
-              label={currentVersion} 
-              color="primary" 
+            <Chip
+              label={currentVersion}
+              color="primary"
               variant="outlined"
               icon={<CheckCircle />}
             />
@@ -214,27 +212,29 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
           {latestVersion && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Typography variant="body1">Latest Version:</Typography>
-              <Chip 
-                label={latestVersion} 
-                color={isUpdateAvailable ? 'warning' : 'success'} 
+              <Chip
+                label={latestVersion}
+                color={isUpdateAvailable ? 'warning' : 'success'}
                 variant="outlined"
                 icon={<Update />}
               />
             </Box>
           )}
-          {isUpdateAvailable && (
+          {isUpdateAvailable && !showRestartButton && (
             <Button
               variant="contained"
               color="primary"
               onClick={handleUpdate}
               disabled={isUpdating}
-              startIcon={isUpdating ? <CircularProgress size={16} /> : <Download />}
+              startIcon={
+                isUpdating ? <CircularProgress size={16} /> : <Download />
+              }
               sx={{ mt: 1 }}
             >
-              {isUpdating ? 'Downloading...' : 'Download and Install'}
+              {isUpdating ? 'Downloading...' : 'Update Now'}
             </Button>
           )}
-          {!isLinux && showRestartButton && (
+          {isUpdateAvailable && showRestartButton && (
             <Button
               onClick={handleRestart}
               color="secondary"
@@ -245,7 +245,7 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
               Restart Now
             </Button>
           )}
-          <Typography variant="body2" color="textSecondary">
+          <Typography variant="body2" color="textSecondary" className="mt-2">
             Rosetta dbt Studio - Turn Raw Data into Business Insights
           </Typography>
         </CardContent>
@@ -291,10 +291,12 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                       <Typography variant="body2" color="textSecondary">
                         Release Notes:
                       </Typography>
-                      <Typography 
-                        variant="body2" 
+                      <Typography
+                        variant="body2"
                         sx={{ mt: 1 }}
-                        dangerouslySetInnerHTML={{ __html: updateInfo.releaseNotes }}
+                        dangerouslySetInnerHTML={{
+                          __html: updateInfo.releaseNotes,
+                        }}
                       />
                     </Box>
                   )}
@@ -354,7 +356,10 @@ const InstallationSettings: React.FC<InstallationSettingsProps> = () => {
                 <Typography variant="body2" color="textSecondary" gutterBottom>
                   User Agent:
                 </Typography>
-                <Typography variant="caption" sx={{ wordBreak: 'break-all', display: 'block' }}>
+                <Typography
+                  variant="caption"
+                  sx={{ wordBreak: 'break-all', display: 'block' }}
+                >
                   {systemInfo.userAgent}
                 </Typography>
               </Box>
